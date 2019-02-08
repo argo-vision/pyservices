@@ -1,0 +1,39 @@
+# Backup files:
+**/*~
+**/*.bak
+**/*.swp
+
+# Logs:
+**/*.log
+
+# Local temporary:
+temp/*
+data/*
+venv/*
+
+# IDE files:
+**/*.idea
+
+# OS generated files:
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python-related:
+**/*.pyc
+**/__pycache__
+
+# Local configurations:
+**/_configuration.py
+service/**/config.py
+config.py
+
+# pip package
+build/**
+dist/**
+pyservices.egg-info/**
+
