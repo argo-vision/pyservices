@@ -1,4 +1,6 @@
 import abc
+import json
+
 from . import content_types
 from .layer_supertypes import Model
 
@@ -39,8 +41,12 @@ def dict_to_instance(val: dict, model: type):
     """
     Recursively recreates an instance.
     """
-    subtypes = model.subtypes or {}
-    for k in val.keys:
+    try:
+        subtypes = model.subtypes
+    except AttributeError:
+        subtypes = {}  # TODO tmp
+
+    for k in val.keys():
         t = subtypes.get(k)
         if type(val[k]) == dict and t:
             val[k] = dict_to_instance(val[k], t)
