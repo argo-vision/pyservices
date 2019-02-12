@@ -13,16 +13,53 @@ def rest(model, path=None):
     pass
 
 
-def get(produce=None):
-    pass
+# TODO following decorators should check for Codec type (type(produces|consumes) == Codec)
+def get(produces=None):
+    def dec(fn):
+        # Appending some info:
+        fn.rest_interface = {
+            'method': 'GET',
+            'produces': produces or JSON,
+            'path': r'/\w+'
+        }
+
+        # Not changing the original function:
+        return fn
+
+    # The decorator instance:
+    return dec
 
 
 def get_list(produces=None):
-    pass
+    def dec(fn):
+        # Appending some info:
+        fn.rest_interface = {
+            'method': 'GET',
+            'produces': produces or JSON,
+            'path': r''  # TODO: add query, order and res numb support
+        }
+
+        # Not changing the original function:
+        return fn
+
+    # The decorator instance:
+    return dec
 
 
 def put(consumes=None):
-    pass
+    def dec(fn):
+        # Appending some info:
+        fn.rest_interface = {
+            'method': 'PUT',
+            'consumes': consumes or JSON,
+            'path': r''
+        }
+
+        # Not changing the original function:
+        return fn
+
+    # The decorator instance:
+    return dec
 
 
 def post(consumes=None):
@@ -30,7 +67,8 @@ def post(consumes=None):
         # Appending some info:
         fn.rest_interface = {
             'method': 'POST',
-            'consumes': consumes or JSON
+            'consumes': consumes or JSON,
+            'path': '/\w+'
         }
         
         # Not changing the original function:
@@ -44,7 +82,9 @@ def delete():
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
-            'method': 'DELETE'
+            'method': 'DELETE',
+            'path': r'/\w+'
+
         }
         
         # Not changing the original function:
