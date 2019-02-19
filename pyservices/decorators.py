@@ -1,4 +1,4 @@
-from .entity_codecs import JSON
+from .entity_codecs import JSON, Codec
 
 
 # Mapping between rest and HTTP methods:
@@ -13,8 +13,10 @@ def rest(model, path=None):
     pass
 
 
-# TODO following decorators should check for Codec type (type(produces|consumes) == Codec)
 def get(produces=None):
+    if produces and not isinstance(produces, Codec):
+        raise TypeError('Expected {}, found {}'.format(Codec, type(produces)))
+
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
@@ -31,6 +33,9 @@ def get(produces=None):
 
 
 def get_list(produces=None):
+    if produces and not isinstance(produces, Codec):
+        raise TypeError('Expected {}, found {}'.format(Codec, type(produces)))
+
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
@@ -47,6 +52,9 @@ def get_list(produces=None):
 
 
 def put(consumes=None):
+    if consumes and not isinstance(consumes, Codec):
+        raise TypeError('Expected {}, found {}'.format(Codec, type(consumes)))
+
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
@@ -63,6 +71,9 @@ def put(consumes=None):
 
 
 def post(consumes=None):
+    if consumes and not isinstance(consumes, Codec):
+        raise TypeError('Expected {}, found {}'.format(Codec, type(consumes)))
+
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
