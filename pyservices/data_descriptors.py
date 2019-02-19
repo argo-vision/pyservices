@@ -5,13 +5,15 @@ from pyservices.exceptions import ModelInitException
 
 
 class Field(abc.ABC):
-    """ Abstract class which represents a field in a MetaModel.
+    """Abstract class which represents a field in a MetaModel.
 
     Class attributes:
         T(type): The generic param used in the field_type.
 
     Attributes:
-        name (str): The name of the field.
+        name (str): The name of the field. The first letter of the name must be
+            in lowercase. The capitalized name may indicate the field_type
+            of the field
         field_type (T): The type of the related field.
         default(Union(T, Callable[...,T], None)): Could be either a field_type
             object or a callable object returning a field_type object.
@@ -30,48 +32,68 @@ class Field(abc.ABC):
         """ Initialize the field.
 
         Raises:
-            ValueError: If a field has a default value if must be non optional.
+            ValueError:
+                If a field has a default value if must be non optional.
+                If the first letter of the provided name is uppercase.
         """
         if optional and default:
             raise ValueError('An optional field cannot have a default')
+        if str.isupper(name[0]):
+            raise ValueError('The case of the name must be lowercase')
         self.name = name
         self.field_type = field_type
         self.optional = optional
         self.default = default
 
 
+# TODO is it ok to identify uniquely the MetaModel with the name? #S1
 class MetaModel:
-    """ Abstract class which represent the description of the model.
+    """Abstract class which represent the description of the model.
 
     Class attributes:
         FieldType(type): The type of Field.
+        modelClasses(dict): A static
+
 
     Attributes:
-        name(str): The name of the class which will be generated
+        name(str): The name of the class which will be generated. It also define
+            will be a key on the modelClasses
         fields(Sequence[FieldType]): The fields used to generate the class with
-        generate_class method.
+            _generate_class method.
     """
     FieldType = NewType('FieldType', Field)
+    modelClasses = dict()
 
     def __init__(self,
                  name: str,
                  *args: Sequence[FieldType]):
-        """ Initialize the meta model.
+        """Initialize the meta model.
 
         Raises:
-            ValueError: If different fields contain the same name attribute.
+            ValueError:
+                If the first letter of the provided name is lowercase.
+                If different fields contain the same name attribute.
+            TypeError:
+                If the first argument is not a string.
+                If the args are not Field's subclass instances.
+            ModelInitException:
+                If the name is already taken by another MetaModel # TODO S1
         """
+
+        if str.islower(name[0]):
+            raise ValueError('The case of the name must be uppercase')
+
+        if MetaModel.modelClasses.get(name):
+            raise ModelInitException('"{}" is already used by another MetaModel'
+                                     .format(name))
         if not isinstance(name, str):
             raise TypeError(
-                'The first argument must be the name of the composed field.'
-            )
+                'The first argument must be the name of the composed field.')
         for arg in args:
             if not isinstance(arg, Field):
                 raise TypeError(
                     'A {} type is not a valid type. A {} is expected.'
-                    .format(type(arg), Field)
-                )
-
+                    .format(type(arg), Field))
         title_set = {field.name for field in args}
         if len(title_set) < len(args):
             raise ValueError('Fields must have unique name')
@@ -79,15 +101,25 @@ class MetaModel:
         self.name = name
         self.fields = args
 
-    def __call__(self, name: str):
-        """ Returns a ComposedField created from the field of the MetaModel
+        # TODO Based on #S1 assumption
+        MetaModel.modelClasses[self.name] = self._generate_class()
+
+    def __call__(self, name: str = None):
+        """Returns a ComposedField created from the field of the MetaModel
+
         """
-        # TODO check this
-        name = name if name else self.name
+        if not name:
+            name = str.lower(self.name[0]) + self.name[1:]
         return ComposedField(name, *self.fields)
 
-    def generate_class(self):
-        """ Generate the class based on fields.
+    def get_class(self):
+        """Returns the class of the model described by the MetaModel instance.
+
+        """
+        return MetaModel.modelClasses.get(self.name)
+
+    def _generate_class(self):
+        """Generate the class based on the fields of the meta model.
 
         Raises:
             ModelInitException:
@@ -154,7 +186,7 @@ class MetaModel:
 
 
 class StringField(Field):
-    """ Represents a string field.
+    """A string field.
 
     """
 
@@ -166,7 +198,7 @@ class StringField(Field):
 
 
 class BooleanField(Field):
-    """ Represents a boolean field.
+    """A boolean field.
 
     """
 
@@ -178,7 +210,7 @@ class BooleanField(Field):
 
 
 class DateTimeField(Field):
-    """ Represents a datetime field.
+    """A datetime field.
 
     """
 
@@ -189,17 +221,23 @@ class DateTimeField(Field):
         super().__init__(name, datetime, default, optional)
 
 
-class ComposedField(Field, MetaModel):
-    """Represents a group of field.
+# TODO #S2 hierarchy
+class ComposedField(Field):
+    """A group of fields.
 
-    This class inherits from Field and and MetaModel.
+    This class inherits from Field.
+    If a ComposedField is initialized through a MetaModel __call__ method,
+        the field_type is already cached on MetaModel.modelClasses.
+    The field_type is obtained from the MetaModel
 
     """
 
     def __init__(self,
                  name: str,
-                 *args: Sequence[MetaModel.FieldType]):
-
-        MetaModel.__init__(self, name, *args)
-        Field.__init__(self, name, self.generate_class())  # FIXME: support optional?
-
+                 *args: Sequence[MetaModel.FieldType],
+                 optional: Optional[bool] = False) -> None:
+        try:
+            field_type = MetaModel(name.capitalize(), *args).get_class()
+        except ModelInitException:
+            field_type = MetaModel.modelClasses.get(name.capitalize())
+        super().__init__(name, field_type, None, optional)
