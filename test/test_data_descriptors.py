@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime
-from pyservices.data_descriptor import MetaModel, StringField, \
-    DateTimeField, Field, BooleanField, ComposedField
+from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
+    Field, BooleanField, ComposedField
 from pyservices.exceptions import ModelInitException
 
 
@@ -11,25 +11,33 @@ class TestDataDescriptor(unittest.TestCase):
         self.title_field = StringField(name='title')
         self.content_field = StringField(name='content', optional=True)
         self.date_time_field = DateTimeField(name='datetime', default=self.now)
+        MetaModel.modelClasses = dict()
         self.note_desc = MetaModel(
             'Note',
             self.title_field,
             self.content_field,
             self.date_time_field
         )
-        self.Note = self.note_desc.generate_class()
+        self.Note = self.note_desc.get_class()
 
     def testField(self):
         self.assertRaises(TypeError, Field)
-        self.assertRaises(ValueError, BooleanField, name='title', optional=True, default=True)
+        self.assertRaises(ValueError, BooleanField, name='title', optional=True,
+                          default=True)
+        self.assertRaises(ValueError, BooleanField, name='Title')
 
     def testMetaModelField(self):
-        self.assertRaises(ValueError, MetaModel, 'MetaModel Name', self.title_field, self.title_field)
+        self.assertRaises(ValueError, MetaModel, 'metaModel Name',
+                          self.title_field, self.title_field)
+        self.assertRaises(ValueError, MetaModel, 'MetaModel Name',
+                          self.title_field, self.title_field)
         self.assertRaises(TypeError, MetaModel, 'MetaModel Name', 'Not a field')
-        self.assertRaises(ValueError, MetaModel, 'Duplicated fields', self.title_field, self.title_field)
+        self.assertRaises(ValueError, MetaModel, 'Duplicated fields',
+                          self.title_field, self.title_field)
 
     def testRepetitiveFieldName(self):
-        self.assertRaises(ValueError, MetaModel, 'ModelName', self.title_field, self.title_field)
+        self.assertRaises(ValueError, MetaModel, 'ModelName',
+                          self.title_field, self.title_field)
 
     def testGeneratedClassBasicUsage(self):
         note = self.Note(title='Lorem Ipsum')
@@ -37,8 +45,10 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertEqual(note.datetime, self.now)
 
     def testGeneratedClassOnInstanceArguments(self):
-        self.assertRaises(ModelInitException, self.Note, 'Definitively', 'Too', 'Many', 'Args')
-        self.assertRaises(ModelInitException, self.Note, title='title', not_existent_method='Trows exception')
+        self.assertRaises(ModelInitException, self.Note, 'Definitively', 'Too',
+                          'Many', 'Args')
+        self.assertRaises(ModelInitException, self.Note, title='title',
+                          not_existent_method='Trows exception')
         self.assertRaises(ModelInitException, self.Note, 'title', title='title')
 
     def testGeneratedClassOnFieldConstraints(self):
@@ -50,37 +60,49 @@ class TestDataDescriptor(unittest.TestCase):
 #     StringField("vocalFeatures")
 # )
     def testGeneratedClassIdempotence(self):
-        # self.assertIsInstance(self.Note('MyTitle'), self.note_desc.generate_class())
-        self.assertEqual(self.note_desc.generate_class(), self.note_desc.generate_class())
+        self.assertIsInstance(self.Note('MyTitle'),
+                              self.note_desc.get_class())
+        self.assertEqual(self.note_desc.get_class(),
+                         self.note_desc.get_class())
 
     def testComposedField(self):
-        # TODO
-        pass
+        post_mm = MetaModel('Post', self.title_field, self.content_field)
+        post_cf = ComposedField('post', self.title_field, self.content_field)
+        self.assertEqual(post_mm.get_class(), post_cf.field_type)
 
     def testDeepMetaModel(self):
-        CedentialModel = MetaModel(
+        credential_meta_model = MetaModel(
             'Credentials',
             StringField('password'),
             StringField('vocalFeatures')
         )
-        UserModel = MetaModel(
+        user_meta_model = MetaModel(
             'User',
             StringField('username'),
             StringField('email'),
-            CedentialModel('Credentials')
+            credential_meta_model(),
+            ComposedField('address',
+                          StringField('city'),
+                          StringField('postalCode'),
+                          optional=True)
         )
+
         self.assertRaises(ModelInitException,
-                          UserModel.generate_class(),
+                          user_meta_model.get_class(),
                           'username',
                           'email',
                           'not a CredentialModel type')
+        user_class = user_meta_model.get_class()
+        credential_class = credential_meta_model.get_class()
         try:
-            user_instance = UserModel.generate_class()('my_username',
-                                                   'my_email',
-                                                   CedentialModel.generate_class()('my_pass', 'my_vocalfeats'))
+            user_instance = user_class('my_username',
+                                       'my_email',
+                                       credential_class('my_pass',
+                                                        'my_vocalFeats'))
         except ModelInitException as e:
             self.fail(e)
-        self.assertIsInstance(user_instance, UserModel.generate_class())
+        self.assertIsInstance(user_instance, user_class)
+        self.assertIsInstance(user_instance.credentials, credential_class)
 
 
 
@@ -103,5 +125,5 @@ class TestDataDescriptor(unittest.TestCase):
 #     }
 # }
 #
-# Credentials = CredentialsModel.generate_class()
-# User = UserModel.generate_class()
+# Credentials = CredentialsModel.get_class()
+# User = UserModel.get_class()
