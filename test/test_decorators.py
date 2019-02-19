@@ -2,6 +2,7 @@ import unittest
 import pyservices as ps
 
 
+# TODO these tests are too repetitive
 class TestDecoratorAddedInfo(unittest.TestCase):
 
     def setUp(self):
@@ -15,18 +16,22 @@ class TestDecoratorAddedInfo(unittest.TestCase):
     def test_post(self):
         ps.post()(self.an_op)
         self._testIfaceItems(method='POST', consumes=ps.JSON)
+        self.assertRaises(Exception, ps.post, 'Not a Codec type')
 
     def test_put(self):
         ps.put()(self.an_op)
         self._testIfaceItems(method='PUT', consumes=ps.JSON)
+        self.assertRaises(Exception, ps.put, 'Not a Codec type')
 
     def test_get(self):
         ps.get()(self.an_op)
         self._testIfaceItems(method='GET', produces=ps.JSON)
+        self.assertRaises(Exception, ps.get, 'Not a Codec type')
 
     def test_get_list(self):
         ps.get_list()(self.an_op)
         self._testIfaceItems(method='GET', produces=ps.JSON)
+        self.assertRaises(Exception, ps.get_list, 'Not a Codec type')
 
     def _testIfaceExistence(self):
         iface = self.an_op.rest_interface
