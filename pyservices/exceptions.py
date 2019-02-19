@@ -1,0 +1,2 @@
+class ModelInitException(Exception):
+    pass
