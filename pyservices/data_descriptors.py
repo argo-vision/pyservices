@@ -13,10 +13,11 @@ class Field(abc.ABC):
     Attributes:
         name (str): The name of the field.
         field_type (T): The type of the related field.
-        default(Union(T, Callable[...,T], None)): Could be either a field_type object or a callable object
-            returning a field_type object. Defaults to None.
-        optional(Optional(bool): A boolean indicating either the field will require a value(False) or don't(True).
+        default(Union(T, Callable[...,T], None)): Could be either a field_type
+            object or a callable object returning a field_type object.
             Defaults to None.
+        optional(Optional(bool): A boolean indicating either the field will
+            require a value(False) or don't(True). Defaults to None.
     """
     T = TypeVar('T')
 
@@ -47,7 +48,8 @@ class MetaModel:
 
     Attributes:
         name(str): The name of the class which will be generated
-        fields(Sequence[FieldType]): The fields used to generate the class with generate_class method.
+        fields(Sequence[FieldType]): The fields used to generate the class with
+        generate_class method.
     """
     FieldType = NewType('FieldType', Field)
 
@@ -60,10 +62,15 @@ class MetaModel:
             ValueError: If different fields contain the same name attribute.
         """
         if not isinstance(name, str):
-            raise TypeError('The first argument must be the name of the composed field.')
+            raise TypeError(
+                'The first argument must be the name of the composed field.'
+            )
         for arg in args:
             if not isinstance(arg, Field):
-                raise TypeError('A {} type is not a valid type. A {} is expected.'.format(type(arg), Field))
+                raise TypeError(
+                    'A {} type is not a valid type. A {} is expected.'
+                    .format(type(arg), Field)
+                )
 
         title_set = {field.name for field in args}
         if len(title_set) < len(args):
@@ -94,28 +101,44 @@ class MetaModel:
         def new(cls, *args, **kwargs):
             if max(len(args), len(kwargs)) > len(self.fields):
                 raise ModelInitException('There are too many arguments.')
-            if not set(kwargs.keys()).issubset({field.name for field in self.fields}):
+            if not set(kwargs.keys()).issubset(
+                    {field.name for field in self.fields}
+            ):
                 raise ModelInitException('Unknown key in kwargs.')
-            field_values = {field.name: arg for arg, field in zip(args, self.fields)}
+            field_values = {
+                field.name: arg for arg, field in zip(args, self.fields)
+            }
             if not set(kwargs.keys()).isdisjoint(set(field_values.keys())):
-                raise ModelInitException('Inconsistencies between args and kwargs.')
+                raise ModelInitException(
+                    'Inconsistencies between args and kwargs.'
+                )
             field_values = {**field_values, **kwargs}
 
             for field in self.fields:
                 value = field_values.get(field.name)
                 if not value:
                     if field.default:
-                        value = field.default() if callable(field.default) else field.default
+                        if callable(field.default):
+                            value = field.default()
+                        else:
+                            value = field.default
                         if not isinstance(value, field.field_type):
-                            raise ModelInitException('The default value has a bad type {}. Expected {}'.format(
-                                type(value), field_values.field_type))
+                            raise ModelInitException(
+                                'The default value has a bad type {}. '
+                                'Expected {}'
+                                .format(type(value), field_values.field_type)
+                            )
                         field_values[field.name] = value
                     elif not field.optional:
-                        raise ModelInitException('The field named "{}" is not optional.'.format(field.name))
+                        raise ModelInitException(
+                            'The field named "{}" is not optional.'
+                            .format(field.name)
+                        )
                 elif not isinstance(value, field.field_type):
-                    raise ModelInitException('{}({}) is not an instance of {}.'.format(value,
-                                                                                       type(value),
-                                                                                       field.field_type))
+                    raise ModelInitException(
+                        '{}({}) is not an instance of {}.'
+                        .format(value, type(value), field.field_type)
+                    )
 
             instance = super(cls, cls).__new__(cls)  # TODO
 
