@@ -46,7 +46,7 @@ class Field(abc.ABC):
         self.default = default
 
 
-# TODO is it ok to identify uniquely the MetaModel with the name? #S1
+# TODO is it ok to identify uniquely the MetaModel with the name?   #S1
 class MetaModel:
     """Abstract class which represent the description of the model.
 
@@ -80,15 +80,16 @@ class MetaModel:
                 If the name is already taken by another MetaModel # TODO S1
         """
 
-        if str.islower(name[0]):
-            raise ValueError('The case of the name must be uppercase')
-
         if MetaModel.modelClasses.get(name):
             raise ModelInitException('"{}" is already used by another MetaModel'
                                      .format(name))
         if not isinstance(name, str):
             raise TypeError(
                 'The first argument must be the name of the composed field.')
+
+        if str.islower(name[0]):
+            raise ValueError('The case of the name must be uppercase')
+
         for arg in args:
             if not isinstance(arg, Field):
                 raise TypeError(
@@ -106,15 +107,13 @@ class MetaModel:
 
     def __call__(self, name: str = None):
         """Returns a ComposedField created from the field of the MetaModel
-
         """
         if not name:
             name = str.lower(self.name[0]) + self.name[1:]
-        return ComposedField(name, *self.fields)
+        return ComposedField(name, meta_model=self)
 
     def get_class(self):
         """Returns the class of the model described by the MetaModel instance.
-
         """
         return MetaModel.modelClasses.get(self.name)
 
@@ -187,7 +186,6 @@ class MetaModel:
 
 class StringField(Field):
     """A string field.
-
     """
 
     def __init__(self,
@@ -199,7 +197,6 @@ class StringField(Field):
 
 class BooleanField(Field):
     """A boolean field.
-
     """
 
     def __init__(self,
@@ -211,7 +208,6 @@ class BooleanField(Field):
 
 class DateTimeField(Field):
     """A datetime field.
-
     """
 
     def __init__(self,
@@ -222,6 +218,7 @@ class DateTimeField(Field):
 
 
 # TODO #S2 hierarchy
+# TODO docstring
 class ComposedField(Field):
     """A group of fields.
 
@@ -230,14 +227,29 @@ class ComposedField(Field):
         the field_type is already cached on MetaModel.modelClasses.
     The field_type is obtained from the MetaModel
 
+    Raises:
+        ModelInitException:
+            TODO
+            If it is generated from MetaModel
+            If it has a name already used in another MetaModel
     """
 
     def __init__(self,
                  name: str,
                  *args: Sequence[MetaModel.FieldType],
-                 optional: Optional[bool] = False) -> None:
-        try:
-            field_type = MetaModel(name.capitalize(), *args).get_class()
-        except ModelInitException:
-            field_type = MetaModel.modelClasses.get(name.capitalize())
-        super().__init__(name, field_type, None, optional)
+                 optional: Optional[bool] = False,
+                 meta_model: type = None) -> None:
+        if meta_model:
+            self.meta_model = meta_model
+        else:
+            try:
+                self.meta_model = MetaModel(name.capitalize(), *args)
+            except ModelInitException:
+                raise ModelInitException('The name is already used by another'
+                                         'MetaModel.')  # TODO #S3
+        super().__init__(name, self.meta_model.get_class(), None, optional)
+
+    def get_class(self):
+        """Return the class of the MetaModel.
+        """
+        return self.meta_model.get_class()

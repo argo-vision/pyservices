@@ -22,8 +22,8 @@ class TestDataDescriptor(unittest.TestCase):
 
     def testField(self):
         self.assertRaises(TypeError, Field)
-        self.assertRaises(ValueError, BooleanField, name='title', optional=True,
-                          default=True)
+        self.assertRaises(ValueError, BooleanField, name='title',
+                          optional=True, default=True)
         self.assertRaises(ValueError, BooleanField, name='Title')
 
     def testMetaModelField(self):
@@ -67,8 +67,8 @@ class TestDataDescriptor(unittest.TestCase):
 
     def testComposedField(self):
         post_mm = MetaModel('Post', self.title_field, self.content_field)
-        post_cf = ComposedField('post', self.title_field, self.content_field)
-        self.assertEqual(post_mm.get_class(), post_cf.field_type)
+        self.assertRaises(ModelInitException, ComposedField, 'post',
+                          self.title_field, self.content_field)  # TODO #S1
 
     def testDeepMetaModel(self):
         credential_meta_model = MetaModel(
