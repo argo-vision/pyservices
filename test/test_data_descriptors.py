@@ -25,6 +25,20 @@ class TestDataDescriptor(unittest.TestCase):
                           optional=True, default=True)
         self.assertRaises(ValueError, BooleanField, name='Title')
 
+    def testDateTimeField(self):
+        dt = datetime.now()
+        try:
+            dtf = DateTimeField('date', dt)
+            dtc = MetaModel('TestDateTimeModel', dtf).get_class()
+        except ModelInitException as e:
+            self.fail(e)
+        inst = dtc(dt)
+        self.assertEqual(dt, inst.date)
+        inst = dtc(dt.timestamp())
+        self.assertEqual(dt, inst.date)
+        inst = dtc(dt.isoformat())
+        self.assertEqual(dt, inst.date)
+
     def testMetaModelField(self):
         self.assertRaises(ValueError, MetaModel, 'metaModel Name',
                           self.title_field, self.title_field)

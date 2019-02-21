@@ -47,17 +47,42 @@ class Field(abc.ABC):
         self.optional = optional
         self.default = default
 
+    def init_value(self, value):
+        """Return the value of a correct type.
+
+        If the field_type is not a builtin, it may be necessary to perform
+            some operations to value.
+
+        Attributes:
+            value: The value used to initialize the model.
+
+        Returns:
+            T: The value of a correct type.
+
+        Raises:
+            ModelInitException:
+                If the type value does not match with field_type.
+        """
+        # TODO
+        # noinspection PyTypeHints
+        if not isinstance(value, self.field_type):
+            raise ModelInitException(
+                '{}({}) is not an instance of {}.'.format(value,
+                                                          type(value),
+                                                          self.field_type))
+        return value
+
 
 class MetaModel:
-    """Abstract class which represent the description of the model.
+    """Abstract class which represents the description of the model.
 
     Class attributes:
         FieldType(type): The type of Field.
-        modelClasses(dict): A static
+        modelClasses(dict): A static dict used to store the generated classes.
 
     Attributes:
         name(str): The name of the class which will be generated. It also define
-            will be a key on the modelClasses
+            will be a key on the modelClasses.
         fields(Sequence[FieldType]): The fields used to generate the class with
             _generate_class method.
     """
@@ -77,7 +102,7 @@ class MetaModel:
                 If the first argument is not a string.
                 If the args are not Field's subclass instances.
             ModelInitException:
-                If the name is already taken by another MetaModel
+                If the name is already taken by another MetaModel.
         """
 
         if MetaModel.modelClasses.get(name):
@@ -105,44 +130,43 @@ class MetaModel:
         MetaModel.modelClasses[self.name] = self._generate_class()
 
     def __call__(self, name: str = None):
-        """Returns a ComposedField created from the fields of the MetaModel
+        """Returns a ComposedField created from the fields of the MetaModel.
         """
         if not name:
             name = str.lower(self.name[0]) + self.name[1:]
         return ComposedField(name, meta_model=self)
 
     def get_class(self):
-        """Returns the class of the model described by the MetaModel instance.
+        """Returns the class representing the model described by the MetaModel.
+
+        Returns:
+            The class stored in the modelClasses dict identified by name as key
         """
         return MetaModel.modelClasses.get(self.name)
 
     def _generate_class(self):
         """Generate the class based on the fields of the meta model.
-
-        Raises:
-            ModelInitException:
-                - Too many args.
-                - Unknown key in kwargs.
-                - Inconsistency between args and kwargs.
-                - Default type error.
-                - No value, no optional.
-                - Bad value type.
         """
         def new(cls, *args, **kwargs):
+            """Create and return a new instance of the model.
+            Raises:
+                ModelInitException:
+                    If too many args are passes.
+                    If an unknown key is present in kwargs.
+                    If there are some inconsistencies between args and kwargs.
+                    If the default type if wrong.
+                    If no value is passed for a non optional field.
+            """
             if max(len(args), len(kwargs)) > len(self.fields):
                 raise ModelInitException('There are too many arguments.')
             if not set(kwargs.keys()).issubset(
-                    {field.name for field in self.fields}
-            ):
-
+                    {field.name for field in self.fields}):
                 raise ModelInitException('Unknown key in kwargs.')
             field_values = {
-                field.name: arg for arg, field in zip(args, self.fields)
-            }
+                field.name: arg for arg, field in zip(args, self.fields)}
             if not set(kwargs.keys()).isdisjoint(set(field_values.keys())):
                 raise ModelInitException(
-                    'Inconsistencies between args and kwargs.'
-                )
+                    'Inconsistencies between args and kwargs.')
             field_values = {**field_values, **kwargs}
 
             for field in self.fields:
@@ -163,13 +187,9 @@ class MetaModel:
                     elif not field.optional:
                         raise ModelInitException(
                             'The field named "{}" is not optional.'
-                            .format(field.name)
-                        )
-                elif not isinstance(value, field.field_type):
-                    raise ModelInitException(
-                        '{}({}) is not an instance of {}.'
-                        .format(value, type(value), field.field_type)
-                    )
+                            .format(field.name))
+                else:
+                    field_values[field.name] = field.init_value(value)
 
             instance = super(cls, cls).__new__(cls)  # TODO
 
@@ -216,6 +236,17 @@ class DateTimeField(Field):
                                 Callable[..., datetime.datetime], None] = None,
                  optional: Optional[bool] = False) -> None:
         super().__init__(name, datetime.datetime, default, optional)
+
+    def init_value(self, value):
+        """Initialize the datetime value.
+        It initialize the datetime in different ways according to the type of
+            value.
+        """
+        if isinstance(value, str):
+            value = datetime.datetime.fromisoformat(value)
+        elif isinstance(value, float):
+            value = datetime.datetime.fromtimestamp(value)
+        return super().init_value(value)
 
 
 # TODO is the name really necessary?
