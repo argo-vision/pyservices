@@ -25,7 +25,7 @@ def instance_attributes(inst):
 def instance_to_dict(val: Model):
     """Recursively generates a dictionary with builtins only.
     """
-    # TODO: Extends the base types
+    # TODO: Extend the base types
     if isinstance(val, (bool, str, int, float, datetime)):
         return val
 
@@ -50,7 +50,6 @@ def dict_to_instance(val: dict, meta_model: type):
     return meta_model.get_class()(**val)
 
 
-# TODO docstring
 class Codec(abc.ABC):
     """A base class for codecs.
     """
@@ -66,8 +65,10 @@ class Codec(abc.ABC):
         """Given a model object, returns its string
         representation in the content_type.
 
-        :model:     A model instance.
-        :return:    A string representing the model.
+        Args:
+            value (Model): A model instance.
+        Returns:
+            str: A string representing the model.
         """
         pass
 
@@ -76,8 +77,11 @@ class Codec(abc.ABC):
         """Given a string representing the model,
         generates the model instance.
 
-        :return:    A model instance.
-        :model:     A string representing the model.
+        Args:
+            value (str): A string representing the model instance.
+            meta_model (MetaModel): A MetaModel used to create the instance.
+        Returns:
+            Model: The model instance.
         """
         pass
 
@@ -90,8 +94,7 @@ class JSON(Codec):
         return content_types.APPLICATION_JSON
 
     def encode(self, value: Model):
-        return json.dumps(instance_to_dict(value))
+        return json.dumps(instance_to_dict(value), default=str)
 
     def decode(self, value: str, meta_model: MetaModel):
-        dict_to_instance(json.parse(value))
-
+        dict_to_instance(json.loads(value), meta_model)

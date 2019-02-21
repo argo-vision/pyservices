@@ -13,53 +13,34 @@ from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
 class TestUtils(unittest.TestCase):
 
     def setUp(self):
-        class Address:
-            def __init__(self, city, postal_code):
-                self.city = city
-                self.postal_code = postal_code
-
-        class Credentials:
-            def __init__(self, password, vocal_features):
-                self.password = password
-                self.vocal_features = vocal_features
-
-        class User:
-            def __init__(self, username, last_access, password,
-                         vocal_features, city, postal_code):
-                self.username = username
-                self.last_access = last_access
-                self.credentials = Credentials(password, vocal_features)
-                self.address = Address(city, postal_code)
-
         self.user_instance = User('my_username', datetime.now(),
                                   'my_password', 'myVocalFeatures',
                                   'my_city', 'my_postalCode')
 
         self.user_dict = {
             'username': 'my_username',
-            'lastAccess': datetime.now(),
+            'last_access': datetime.now(),
             'credentials': {
                 'password': 'my_password',
-                'vocalFeatures': 'my_vocal_features'
+                'vocal_features': 'my_vocal_features'
             },
             'address': {
                 'city': 'my_city',
-                'postalCode': 'my_postal_code'
+                'postal_code': 'my_postal_code'
             }
-
         }
         MetaModel.modelClasses = dict()
         self.address_meta_model = MetaModel(
             'Address',
             StringField('city'),
-            StringField('postalCode'))
+            StringField('postal_code'))
         self.user_meta_model = MetaModel(
             'User',
             StringField('username'),
-            DateTimeField('lastAccess'),
+            DateTimeField('last_access'),
             ComposedField('credentials',
                           StringField('password'),
-                          StringField('vocalFeatures')),
+                          StringField('vocal_features')),
             self.address_meta_model())
 
     def test_get(self):
@@ -104,7 +85,55 @@ class TestUtils(unittest.TestCase):
 
 
 class TestJSON(unittest.TestCase):
-    pass
+
+    def setUp(self):
+        self.user_instance = User('my_username', '2019-02-21T16:03:52.147559',
+                                  'my_password', 'myVocalFeatures',
+                                  'my_city', 'my_postalCode')
+        self.user_json = '{"address": {"city": "my_city", "postal_code": "my_postalCode"}, "credentials": {"password": "my_password", "vocal_features": "myVocalFeatures"}, "last_access": "2019-02-21T16:03:52.147559", "username": "my_username"}'
+        self.codec = ps.entity_codecs.JSON()
+
+        MetaModel.modelClasses = dict()
+        self.address_meta_model = MetaModel(
+            'Address',
+            StringField('city'),
+            StringField('postal_code'))
+        self.user_meta_model = MetaModel(
+            'User',
+            StringField('username'),
+            DateTimeField('last_access'),
+            ComposedField('credentials',
+                          StringField('password'),
+                          StringField('vocal_features')),
+            self.address_meta_model())
+
+    def test_decode(self):
+        instance_json = self.codec.encode(self.user_instance)
+        self.assertEqual(instance_json, self.user_json)
+
+    def test_encode(self):
+        self.codec.decode(self.user_json, self.user_meta_model)
+
+
+class Address:
+    def __init__(self, city, postal_code):
+        self.city = city
+        self.postal_code = postal_code
+
+
+class Credentials:
+    def __init__(self, password, vocal_features):
+        self.password = password
+        self.vocal_features = vocal_features
+
+
+class User:
+    def __init__(self, username, last_access, password,
+                 vocal_features, city, postal_code):
+        self.username = username
+        self.last_access = last_access
+        self.credentials = Credentials(password, vocal_features)
+        self.address = Address(city, postal_code)
 
 
 if __name__ == '__main__':
