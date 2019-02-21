@@ -16,8 +16,7 @@ class TestDataDescriptor(unittest.TestCase):
             'Note',
             self.title_field,
             self.content_field,
-            self.date_time_field
-        )
+            self.date_time_field)
         self.Note = self.note_desc.get_class()
 
     def testField(self):
@@ -67,15 +66,17 @@ class TestDataDescriptor(unittest.TestCase):
 
     def testComposedField(self):
         post_mm = MetaModel('Post', self.title_field, self.content_field)
-        self.assertRaises(ModelInitException, ComposedField, 'post',
-                          self.title_field, self.content_field)  # TODO #S1
+        try:
+            ComposedField('post', self.title_field, self.content_field)
+            ComposedField('post', self.title_field, self.content_field)
+        except ModelInitException as e:
+            self.fail(e)
 
     def testDeepMetaModel(self):
         credential_meta_model = MetaModel(
             'Credentials',
             StringField('password'),
-            StringField('vocalFeatures')
-        )
+            StringField('vocalFeatures'))
         user_meta_model = MetaModel(
             'User',
             StringField('username'),
@@ -84,8 +85,7 @@ class TestDataDescriptor(unittest.TestCase):
             ComposedField('address',
                           StringField('city'),
                           StringField('postalCode'),
-                          optional=True)
-        )
+                          optional=True))
 
         self.assertRaises(ModelInitException,
                           user_meta_model.get_class(),

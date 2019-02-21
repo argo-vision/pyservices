@@ -1,5 +1,7 @@
-import abc 
-from datetime import datetime
+import abc
+import datetime
+import uuid
+
 from typing import NewType, Callable, TypeVar, Sequence, Optional, Union
 from pyservices.exceptions import ModelInitException
 
@@ -46,14 +48,12 @@ class Field(abc.ABC):
         self.default = default
 
 
-# TODO is it ok to identify uniquely the MetaModel with the name?   #S1
 class MetaModel:
     """Abstract class which represent the description of the model.
 
     Class attributes:
         FieldType(type): The type of Field.
         modelClasses(dict): A static
-
 
     Attributes:
         name(str): The name of the class which will be generated. It also define
@@ -77,7 +77,7 @@ class MetaModel:
                 If the first argument is not a string.
                 If the args are not Field's subclass instances.
             ModelInitException:
-                If the name is already taken by another MetaModel # TODO S1
+                If the name is already taken by another MetaModel
         """
 
         if MetaModel.modelClasses.get(name):
@@ -102,11 +102,10 @@ class MetaModel:
         self.name = name
         self.fields = args
 
-        # TODO Based on #S1 assumption
         MetaModel.modelClasses[self.name] = self._generate_class()
 
     def __call__(self, name: str = None):
-        """Returns a ComposedField created from the field of the MetaModel
+        """Returns a ComposedField created from the fields of the MetaModel
         """
         if not name:
             name = str.lower(self.name[0]) + self.name[1:]
@@ -135,6 +134,7 @@ class MetaModel:
             if not set(kwargs.keys()).issubset(
                     {field.name for field in self.fields}
             ):
+
                 raise ModelInitException('Unknown key in kwargs.')
             field_values = {
                 field.name: arg for arg, field in zip(args, self.fields)
@@ -212,26 +212,20 @@ class DateTimeField(Field):
 
     def __init__(self,
                  name: str,
-                 default: Union[datetime, Callable[..., datetime], None] = None,
+                 default: Union[datetime.datetime,
+                                Callable[..., datetime.datetime], None] = None,
                  optional: Optional[bool] = False) -> None:
-        super().__init__(name, datetime, default, optional)
+        super().__init__(name, datetime.datetime, default, optional)
 
 
-# TODO #S2 hierarchy
-# TODO docstring
+# TODO is the name really necessary?
 class ComposedField(Field):
     """A group of fields.
 
     This class inherits from Field.
     If a ComposedField is initialized through a MetaModel __call__ method,
         the field_type is already cached on MetaModel.modelClasses.
-    The field_type is obtained from the MetaModel
-
-    Raises:
-        ModelInitException:
-            TODO
-            If it is generated from MetaModel
-            If it has a name already used in another MetaModel
+    The field_type is obtained from the MetaModel.
     """
 
     def __init__(self,
@@ -242,11 +236,8 @@ class ComposedField(Field):
         if meta_model:
             self.meta_model = meta_model
         else:
-            try:
-                self.meta_model = MetaModel(name.capitalize(), *args)
-            except ModelInitException:
-                raise ModelInitException('The name is already used by another'
-                                         'MetaModel.')  # TODO #S3
+            self.meta_model = MetaModel(
+                name.capitalize() + '_' + str(uuid.uuid4()), *args)
         super().__init__(name, self.meta_model.get_class(), None, optional)
 
     def get_class(self):
