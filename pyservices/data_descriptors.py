@@ -3,6 +3,7 @@ import datetime
 import uuid
 
 from typing import NewType, Callable, TypeVar, Sequence, Optional, Union
+
 from pyservices.exceptions import ModelInitException
 
 
@@ -15,7 +16,7 @@ class Field(abc.ABC):
     Attributes:
         name (str): The name of the field. The first letter of the name must be
             in lowercase. The capitalized name may indicate the field_type
-            of the field
+            of the field.
         field_type (T): The type of the related field.
         default(Union(T, Callable[...,T], None)): Could be either a field_type
             object or a callable object returning a field_type object.
@@ -67,9 +68,8 @@ class Field(abc.ABC):
         # noinspection PyTypeHints
         if not isinstance(value, self.field_type):
             raise ModelInitException(
-                '{}({}) is not an instance of {}.'.format(value,
-                                                          type(value),
-                                                          self.field_type))
+                f'{value}({type(value)}) is not an instance of '
+                f'{self.field_type}.')
         return value
 
 
@@ -106,8 +106,8 @@ class MetaModel:
         """
 
         if MetaModel.modelClasses.get(name):
-            raise ModelInitException('"{}" is already used by another MetaModel'
-                                     .format(name))
+            raise ModelInitException(f'"{name}" is already used by another '
+                                     f'MetaModel')
         if not isinstance(name, str):
             raise TypeError(
                 'The first argument must be the name of the composed field.')
@@ -118,8 +118,8 @@ class MetaModel:
         for arg in args:
             if not isinstance(arg, Field):
                 raise TypeError(
-                    'A {} type is not a valid type. A {} is expected.'
-                    .format(type(arg), Field))
+                    f'A {type(arg)} type is not a valid type. A {Field} is '
+                    f'expected.')
         title_set = {field.name for field in args}
         if len(title_set) < len(args):
             raise ValueError('Fields must have unique name')
@@ -140,7 +140,7 @@ class MetaModel:
         """Returns the class representing the model described by the MetaModel.
 
         Returns:
-            The class stored in the modelClasses dict identified by name as key
+            The class stored in the modelClasses dict identified by name as key.
         """
         return MetaModel.modelClasses.get(self.name)
 
@@ -179,15 +179,14 @@ class MetaModel:
                             value = field.default
                         if not isinstance(value, field.field_type):
                             raise ModelInitException(
-                                'The default value has a bad type {}. '
-                                'Expected {}'
-                                .format(type(value), field_values.field_type)
+                                f'The default value has a bad type '
+                                f'{type(value)}.Expected '
+                                f'{field_values.field_type}'
                             )
                         field_values[field.name] = value
                     elif not field.optional:
                         raise ModelInitException(
-                            'The field named "{}" is not optional.'
-                            .format(field.name))
+                            f'The field named "{field.name}" is not optional.')
                 else:
                     field_values[field.name] = field.init_value(value)
 

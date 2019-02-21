@@ -1,11 +1,10 @@
 import abc
 import json
-
-from datetime import datetime
+import datetime
 
 from . import content_types
+from .data_descriptors import MetaModel
 from .layer_supertypes import Model
-from pyservices.data_descriptors import MetaModel
 
 
 def get(inst, memb):
@@ -26,7 +25,7 @@ def instance_to_dict(val: Model):
     """Recursively generates a dictionary with builtins only.
     """
     # TODO: Extend the base types
-    if isinstance(val, (bool, str, int, float, datetime)):
+    if isinstance(val, (bool, str, int, float, datetime.datetime)):
         return val
 
     # Recursive encoding:

@@ -7,9 +7,6 @@ from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
     ComposedField
 
 
-# TODO case dict conventions and obj
-# TODO check setup instance attrs name
-#
 class TestUtils(unittest.TestCase):
 
     def setUp(self):
@@ -90,7 +87,11 @@ class TestJSON(unittest.TestCase):
         self.user_instance = User('my_username', '2019-02-21T16:03:52.147559',
                                   'my_password', 'myVocalFeatures',
                                   'my_city', 'my_postalCode')
-        self.user_json = '{"address": {"city": "my_city", "postal_code": "my_postalCode"}, "credentials": {"password": "my_password", "vocal_features": "myVocalFeatures"}, "last_access": "2019-02-21T16:03:52.147559", "username": "my_username"}'
+        self.user_json = '{"address": {"city": "my_city", "postal_code": "my_' \
+                         'postalCode"}, "credentials": {"password": "my_passw' \
+                         'ord", "vocal_features": "myVocalFeatures"}, "last_a' \
+                         'ccess": "2019-02-21T16:03:52.147559", "username": "' \
+                         'my_username"}'
         self.codec = ps.entity_codecs.JSON()
 
         MetaModel.modelClasses = dict()

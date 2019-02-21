@@ -15,7 +15,7 @@ def rest(model, path=None):
 
 def get(produces=None):
     if produces and not isinstance(produces, Codec):
-        raise TypeError('Expected {}, found {}'.format(Codec, type(produces)))
+        raise TypeError(f'Expected {Codec}, found {type(produces)}')
 
     def dec(fn):
         # Appending some info:
@@ -34,7 +34,7 @@ def get(produces=None):
 
 def get_list(produces=None):
     if produces and not isinstance(produces, Codec):
-        raise TypeError('Expected {}, found {}'.format(Codec, type(produces)))
+        raise TypeError(f'Expected {Codec}, found {type(produces)}')
 
     def dec(fn):
         # Appending some info:
@@ -53,7 +53,7 @@ def get_list(produces=None):
 
 def put(consumes=None):
     if consumes and not isinstance(consumes, Codec):
-        raise TypeError('Expected {}, found {}'.format(Codec, type(consumes)))
+        raise TypeError(f'Expected {Codec}, found {type(consumes)}')
 
     def dec(fn):
         # Appending some info:
@@ -72,7 +72,7 @@ def put(consumes=None):
 
 def post(consumes=None):
     if consumes and not isinstance(consumes, Codec):
-        raise TypeError('Expected {}, found {}'.format(Codec, type(consumes)))
+        raise TypeError(f'Expected {Codec}, found {type(consumes)}')
 
     def dec(fn):
         # Appending some info:
