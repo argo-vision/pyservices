@@ -14,11 +14,19 @@ def get(inst, memb):
 
 
 def instance_attributes(inst):
-    """Given an instance, lists the public non-callable members.
+    """Given an instance, lists the name of all public non-callable members.
     """
     return [n for n in dir(inst)
             if not n.startswith('_')
             and not callable(get(inst, n))]
+
+
+def instance_methods(inst):
+    """Given an instance, lists the public callable members.
+    """
+    return [get(inst, n) for n in dir(inst)
+            if not n.startswith('_')
+            and callable(get(inst, n))]
 
 
 def instance_to_dict(val: Model):
@@ -27,6 +35,8 @@ def instance_to_dict(val: Model):
     # TODO: Extend the base types
     if isinstance(val, (bool, str, int, float, datetime.datetime)):
         return val
+    if isinstance(val, list):
+        return [instance_to_dict(el) for el in val]
 
     # Recursive encoding:
     return {k: instance_to_dict(get(val, k))
@@ -53,14 +63,16 @@ class Codec(abc.ABC):
     """A base class for codecs.
     """
 
+    @classmethod
     @abc.abstractmethod
-    def content_type(self):
+    def content_type(cls):
         """The content-type managed by this codec.
         """
         pass
 
+    @classmethod
     @abc.abstractmethod
-    def encode(self, value: Model):
+    def encode(cls, value: Model):
         """Given a model object, returns its string
         representation in the content_type.
 
@@ -71,8 +83,9 @@ class Codec(abc.ABC):
         """
         pass
 
+    @classmethod
     @abc.abstractmethod
-    def decode(self, value: str, meta_model: MetaModel):
+    def decode(cls, value: str, meta_model: MetaModel):
         """Given a string representing the model,
         generates the model instance.
 
@@ -89,11 +102,14 @@ class JSON(Codec):
     """A codec for the JSON format.
     """
 
-    def content_type(self):
+    @classmethod
+    def content_type(cls):
         return content_types.APPLICATION_JSON
 
-    def encode(self, value: Model):
+    @classmethod
+    def encode(cls, value: Model):
         return json.dumps(instance_to_dict(value), default=str)
 
-    def decode(self, value: str, meta_model: MetaModel):
-        dict_to_instance(json.loads(value), meta_model)
+    @classmethod
+    def decode(cls, value: str, meta_model: MetaModel):
+        return dict_to_instance(json.loads(value), meta_model)
