@@ -1,3 +1,5 @@
+import functools
+
 from .entity_codecs import JSON, Codec
 
 
@@ -9,20 +11,22 @@ from .entity_codecs import JSON, Codec
 #   DELETE      /user/id        cancello
 
 
-def rest(model, path=None):
-    pass
-
-
-def get(produces=None):
-    if produces and not isinstance(produces, Codec):
+# TODO NOT ENOUGHT DRY
+# TODO this decorators are related to a particolar type of interface (the REST one). They could be better organized (decorator/class)
+def rest_detail(meta_model, produces=None, uri=None):
+    if produces and not issubclass(produces, Codec):
         raise TypeError(f'Expected {Codec}, found {type(produces)}')
+    if not uri:
+        uri = meta_model.name + 's'
+    uri = uri.lower()
 
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
-            'method': 'GET',
+            'operation': 'detail',
             'produces': produces or JSON,
-            'path': r'/\w+'
+            'uri': uri,
+            'resource_meta_model': meta_model
         }
 
         # Not changing the original function:
@@ -32,16 +36,20 @@ def get(produces=None):
     return dec
 
 
-def get_list(produces=None):
-    if produces and not isinstance(produces, Codec):
+def rest_collection(meta_model, produces=None, uri=None):
+    if produces and not issubclass(produces, Codec):
         raise TypeError(f'Expected {Codec}, found {type(produces)}')
+    if not uri:
+        uri = meta_model.name + 's'
+    uri = uri.lower()
 
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
-            'method': 'GET',
+            'operation': 'list',
             'produces': produces or JSON,
-            'path': r''  # TODO: add query, order and res numb support
+            'resource_meta_model': meta_model,
+            'uri': uri
         }
 
         # Not changing the original function:
@@ -51,16 +59,21 @@ def get_list(produces=None):
     return dec
 
 
-def put(consumes=None):
-    if consumes and not isinstance(consumes, Codec):
+def rest_add(meta_model, consumes=None, uri=None):
+    if consumes and not issubclass(consumes, Codec):
         raise TypeError(f'Expected {Codec}, found {type(consumes)}')
 
+    if not uri:
+        uri = meta_model.name + 's'
+    uri = uri.lower()
+
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
-            'method': 'PUT',
+            'operation': 'add',
             'consumes': consumes or JSON,
-            'path': r''
+            'uri': uri,
+            'resource_meta_model': meta_model,
         }
 
         # Not changing the original function:
@@ -70,16 +83,21 @@ def put(consumes=None):
     return dec
 
 
-def post(consumes=None):
-    if consumes and not isinstance(consumes, Codec):
+def rest_update(meta_model, consumes=None, uri=None):
+    if consumes and not issubclass(consumes, Codec):
         raise TypeError(f'Expected {Codec}, found {type(consumes)}')
+
+    if not uri:
+        uri = meta_model.name + 's'
+    uri = uri.lower()
 
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
-            'method': 'POST',
+            'operation': 'update',
             'consumes': consumes or JSON,
-            'path': '/\w+'
+            'uri': uri,
+            'resource_meta_model': meta_model,
         }
         
         # Not changing the original function:
@@ -89,13 +107,17 @@ def post(consumes=None):
     return dec
 
 
-def delete():
+def rest_delete(meta_model, uri=None):
+    if not uri:
+        uri = meta_model.name + 's'
+    uri = uri.lower()
+
     def dec(fn):
         # Appending some info:
         fn.rest_interface = {
-            'method': 'DELETE',
-            'path': r'/\w+'
-
+            'operation': 'delete',
+            'uri': uri,
+            'resource_meta_model': meta_model,
         }
         
         # Not changing the original function:
