@@ -25,7 +25,8 @@ class NoteService(ps.Service):
     def put_note(self, note: Note):
         self.content[note.id] = note
 
-# Generating the RESful interface with the configured framework:
-note_gateway = ps.rest_server(NoteService)
+
+# Generating the RESTful interface with the configured framework:
+note_gateway = ps.rest_server(NoteService, {'framework': ps.frameworks.FALCON})
 note_client = ps.rest_client(NoteService)
 
