@@ -69,10 +69,6 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertRaises(ModelInitException, self.Note)
         self.assertRaises(ModelInitException, self.Note, title=1)
 
-# CredentialsModel = MetaModel(
-#     StringField("password"),
-#     StringField("vocalFeatures")
-# )
     def testGeneratedClassIdempotence(self):
         self.assertIsInstance(self.Note('MyTitle'),
                               self.note_desc.get_class())
