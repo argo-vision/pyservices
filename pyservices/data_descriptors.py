@@ -74,7 +74,7 @@ class Field(abc.ABC):
 
 
 class MetaModel:
-    """Abstract class which represents the description of the model.
+    """ A class which represents the description of the model.
 
     Class attributes:
         FieldType(type): The type of Field.
