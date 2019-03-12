@@ -11,18 +11,7 @@ class Field(abc.ABC):
     """Abstract class which represents a field in a MetaModel.
 
     Class attributes:
-        T(type): The generic param used in the field_type.
-
-    Attributes:
-        name (str): The name of the field. The first letter of the name must be
-            in lowercase. The capitalized name may indicate the field_type
-            of the field.
-        field_type (T): The type of the related field.
-        default(Union(T, Callable[...,T], None)): Could be either a field_type
-            object or a callable object returning a field_type object.
-            Defaults to None.
-        optional(Optional(bool): A boolean indicating either the field will
-            require a value(False) or don't(True). Defaults to None.
+        T (typing.TypeVar): The generic param used in the field_type.
     """
     T = TypeVar('T')
 
@@ -33,6 +22,17 @@ class Field(abc.ABC):
                  default: Union[T, Callable[..., T], None] = None,
                  optional: Optional[bool] = False) -> None:
         """ Initialize the field.
+
+        Attributes:
+            name (str): The name of the field. The first letter of the name must
+                be in lowercase. The capitalized name may indicate the
+                field_type of the field.
+            field_type (T): The type of the related field.
+            default (Union(T, Callable[...,T], None)): Could be either a
+                field_type object or a callable object returning a field_type
+                object. Defaults to None.
+            optional (Optional(bool): A boolean indicating either the field will
+                require a value(False) or don't(True). Defaults to None.
 
         Raises:
             ValueError:
@@ -64,7 +64,6 @@ class Field(abc.ABC):
             ModelInitException:
                 If the type value does not match with field_type.
         """
-        # TODO
         # noinspection PyTypeHints
         if not isinstance(value, self.field_type):
             raise ModelInitException(
@@ -77,14 +76,8 @@ class MetaModel:
     """ A class which represents the description of the model.
 
     Class attributes:
-        FieldType(type): The type of Field.
-        modelClasses(dict): A static dict used to store the generated classes.
-
-    Attributes:
-        name(str): The name of the class which will be generated. It also define
-            will be a key on the modelClasses.
-        fields(Sequence[FieldType]): The fields used to generate the class with
-            _generate_class method.
+        FieldType (type): The type of Field.
+        modelClasses (dict): A static dict used to store the generated classes.
     """
     FieldType = NewType('FieldType', Field)
     modelClasses = dict()
@@ -93,6 +86,12 @@ class MetaModel:
                  name: str,
                  *args: Sequence[FieldType]):
         """Initialize the meta model.
+
+        Attributes:
+            name (str): The name of the class which will be generated. It also
+                define will be a key on the modelClasses.
+            fields (Sequence[FieldType]): The fields used to generate the class
+                with _generate_class method.
 
         Raises:
             ValueError:
@@ -149,6 +148,13 @@ class MetaModel:
         """
         def new(cls, *args, **kwargs):
             """Create and return a new instance of the model.
+
+            Attributes:
+                args: A sequence of the values used to initialize the
+                    class generated from the MetaModel
+                kwargs: Values used to initialize the class generated form the
+                    MetaModel with keywords
+
             Raises:
                 ModelInitException:
                     If too many args are passes.
@@ -186,13 +192,13 @@ class MetaModel:
                         field_values[field.name] = value
                     elif not field.optional:
                         raise ModelInitException(
-                            f'The field named "{field.name}" is not optional.')
+                            f'The field named "{field.name}"'
+                            f'is not optional.')
                 else:
                     field_values[field.name] = field.init_value(value)
 
             instance = super(cls, cls).__new__(cls)  # TODO
 
-            # TODO move this in __init__?
             for k, v in field_values.items():
                 setattr(instance, k, v)
 
@@ -225,6 +231,32 @@ class BooleanField(Field):
         super().__init__(name, bool, default, optional)
 
 
+class IntegerField(Field):
+    """An integer field.
+    """
+
+    def __init__(self,
+                 name: int,
+                 default: Union[
+                     int, Callable[..., int], None] = None,
+                 optional: Optional[int] = False) -> None:
+        super().__init__(name, int, default,
+                         optional)
+
+
+class FloatField(Field):
+    """An float field.
+    """
+
+    def __init__(self,
+                 name: float,
+                 default: Union[
+                     float, Callable[..., float], None] = None,
+                 optional: Optional[float] = False) -> None:
+        super().__init__(name, float, default,
+                         optional)
+
+
 class DateTimeField(Field):
     """A datetime field.
     """
@@ -232,12 +264,14 @@ class DateTimeField(Field):
     def __init__(self,
                  name: str,
                  default: Union[datetime.datetime,
-                                Callable[..., datetime.datetime], None] = None,
+                                Callable[..., datetime.datetime],
+                                None] = None,
                  optional: Optional[bool] = False) -> None:
         super().__init__(name, datetime.datetime, default, optional)
 
     def init_value(self, value):
         """Initialize the datetime value.
+
         It initialize the datetime in different ways according to the type of
             value.
         """
@@ -248,7 +282,6 @@ class DateTimeField(Field):
         return super().init_value(value)
 
 
-# TODO is the name really necessary?
 class ComposedField(Field):
     """A group of fields.
 
@@ -263,6 +296,16 @@ class ComposedField(Field):
                  *args: Sequence[MetaModel.FieldType],
                  optional: Optional[bool] = False,
                  meta_model: type = None) -> None:
+        """ Initialize the ComposedField.
+
+        Attributes:
+            *args (Sequence[MetaModel.FieldType]): The fields which compose the
+                ComposedField
+            meta_model (type): The related MetaModel. If passed, the composed
+                field is generated from an existing MetaModel. If not, a
+                MetaModel is created from the ComposedField.
+        """
+
         if meta_model:
             self.meta_model = meta_model
         else:
@@ -274,3 +317,34 @@ class ComposedField(Field):
         """Return the class of the MetaModel.
         """
         return self.meta_model.get_class()
+
+
+class SequenceField(Field):
+    """A list field.
+    """
+
+    def __init__(self,
+                 name: str,
+                 data_type: Field,
+                 optional: Optional[bool] = False) -> None:
+        """ Initialize the SequenceField
+        Attributes:
+            data_type (Field): The type of the fields inside the list.
+        """
+
+        self.data_type = data_type
+        super().__init__(name, list, None, optional)
+
+    def init_value(self, values):
+        """Return the value of a correct type.
+
+        Checks the type of the elements of the list.
+        """
+        values = super().init_value(values)
+        t = self.data_type
+        for el in values:
+            # noinspection PyTypeHints
+            if not isinstance(el, t.field_type):
+                raise ModelInitException(f'The type of the {el} is not '
+                                         f'{t.field_type}')
+        return values

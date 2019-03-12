@@ -2,58 +2,98 @@ import abc
 import json
 import datetime
 
-from . import content_types
-from .data_descriptors import MetaModel
+from typing import Union
+
+from . import http_content_types
+from .data_descriptors import MetaModel, SequenceField, ComposedField
 from .layer_supertypes import Model
 
 
 def get(inst, memb):
     """Given an instance and a member name, returns it.
+
+    Attributes:
+        inst (obj):  The instance of the object.
+        memb (str): The name of the attribute.
     """
+
     return inst.__getattribute__(memb)
 
 
 def instance_attributes(inst):
     """Given an instance, lists the name of all public non-callable members.
+
+    Attributes:
+        inst (obj):  The instance of the object.
     """
     return [n for n in dir(inst)
             if not n.startswith('_')
             and not callable(get(inst, n))]
 
 
-def instance_methods(inst):
+def instance_callable_objects(inst):
     """Given an instance, lists the public callable members.
+
+    Attributes:
+        inst (obj):  The instance of the object.
     """
     return [get(inst, n) for n in dir(inst)
             if not n.startswith('_')
             and callable(get(inst, n))]
 
 
-def instance_to_dict(val: Model):
-    """Recursively generates a dictionary with builtins only.
+def instance_to_repr(val: object):
+    """Recursively generates a dict (or a list of dict).
+
+    Attributes:
+        val (object):  The instance of the object.
     """
-    # TODO: Extend the base types
+
+    # Single object
     if isinstance(val, (bool, str, int, float, datetime.datetime)):
         return val
+
+    # List of objects
     if isinstance(val, list):
-        return [instance_to_dict(el) for el in val]
+        return [instance_to_repr(el) for el in val]
 
     # Recursive encoding:
-    return {k: instance_to_dict(get(val, k))
+    return {k: instance_to_repr(get(val, k))
             for k in instance_attributes(val)}
 
 
-def dict_to_instance(val: dict, meta_model: type):
+def repr_to_instance(val: Union[dict, list], meta_model: type):
     """Recursively recreates an instance given the MetaModel.
+
+    Attributes:
+        val (Union[dict, list]): The representation of the data in text form
+            with test form values
+        meta_model (type): The MetaModel used to instantiate the object
     """
+
+    # List of objects
+    if isinstance(val, list):
+        return [repr_to_instance(el, meta_model) for el in val]
+
+    # Single object
     for k in val.keys():
+        t = next((field for field in meta_model.fields if field.name == k),
+                 None)
+
+        # t is a ComposedField
         if isinstance(val[k], dict):
-            t = next((field for field in meta_model.fields if field.name == k),
-                     None)
-            if not t:
-                raise TypeError("The MetaModel is not compatible with the dict."
-                                "\"{}\" key does not find the related field")
-            val[k] = dict_to_instance(val[k], t)
+            if not isinstance(t, ComposedField):
+                raise TypeError("The MetaModel is not compatible with the"
+                                "given val.")
+            val[k] = repr_to_instance(val[k], t.meta_model)
+
+        # t is a SequenceField
+        elif isinstance(val[k], list):
+            if not isinstance(t, SequenceField):
+                raise TypeError("The MetaModel is not compatible with the"
+                                "given val.")
+            val[k] = [repr_to_instance(el, t.data_type.meta_model)
+                      for el in val[k]]
 
     # Instantiation:
     return meta_model.get_class()(**val)
@@ -61,22 +101,20 @@ def dict_to_instance(val: dict, meta_model: type):
 
 class Codec(abc.ABC):
     """A base class for codecs.
+
+    Class attributes:
+        http_content_type (str): The content type of the related codec
     """
 
-    @classmethod
-    @abc.abstractmethod
-    def content_type(cls):
-        """The content-type managed by this codec.
-        """
-        pass
+    http_content_type = None
 
     @classmethod
     @abc.abstractmethod
     def encode(cls, value: Model):
         """Given a model object, returns its string
-        representation in the content_type.
+        representation in the http_content_type.
 
-        Args:
+        Arguments:
             value (Model): A model instance.
         Returns:
             str: A string representing the model.
@@ -89,7 +127,7 @@ class Codec(abc.ABC):
         """Given a string representing the model,
         generates the model instance.
 
-        Args:
+        Arguments:
             value (str): A string representing the model instance.
             meta_model (MetaModel): A MetaModel used to create the instance.
         Returns:
@@ -102,14 +140,12 @@ class JSON(Codec):
     """A codec for the JSON format.
     """
 
-    @classmethod
-    def content_type(cls):
-        return content_types.APPLICATION_JSON
+    http_content_type = http_content_types.APPLICATION_JSON
 
     @classmethod
     def encode(cls, value: Model):
-        return json.dumps(instance_to_dict(value), default=str)
+        return json.dumps(instance_to_repr(value), default=str)
 
     @classmethod
     def decode(cls, value: str, meta_model: MetaModel):
-        return dict_to_instance(json.loads(value), meta_model)
+        return repr_to_instance(json.loads(value), meta_model)
