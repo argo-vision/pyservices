@@ -4,15 +4,17 @@ from datetime import datetime
 
 import pyservices as ps
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
-    ComposedField
+    ComposedField, SequenceField
 
 
+# TODO refactor
 class TestUtils(unittest.TestCase):
 
     def setUp(self):
         self.user_instance = User('my_username', datetime.now(),
                                   'my_password', 'myVocalFeatures',
                                   'my_city', 'my_postalCode')
+        self.users = [self.user_instance for _ in range(5)]
 
         self.user_dict = {
             'username': 'my_username',
@@ -39,6 +41,25 @@ class TestUtils(unittest.TestCase):
                           StringField('password'),
                           StringField('vocal_features')),
             self.address_meta_model())
+        self.user_multiple_addresses_mm = MetaModel(
+            'UserMA', StringField('username'),
+            DateTimeField('last_access'),
+            SequenceField('addresses', data_type=self.address_meta_model())
+        )
+
+        self.addresses = [
+            self.address_meta_model.get_class()('MyCity', '44444'),
+            self.address_meta_model.get_class()('MySecondCity', '53102')]
+
+        self.user_ma = self.user_multiple_addresses_mm.get_class()(
+            'MyUsername', datetime.now(), self.addresses
+        )
+        self.user_ma_repr = {
+            'addresses': [
+                {'city': 'MyCity', 'postal_code': '44444'},
+                {'city': 'MySecondCity', 'postal_code': '53102'}],
+            'last_access': datetime(2019, 3, 9, 0, 33, 6, 386788),
+            'username': 'MyUsername'}
 
     def test_get(self):
         username = ps.entity_codecs.get(self.user_instance, 'username')
@@ -51,9 +72,9 @@ class TestUtils(unittest.TestCase):
         self.assertListEqual(attributes, ['address', 'credentials',
                                           'last_access', 'username'])
 
-    def test_dict_to_instance(self):
-        user_instance = ps.entity_codecs.dict_to_instance(self.user_dict,
-                                                          self.user_meta_model)
+    def test_repr_to_instance(self):
+        user_instance = ps.entity_codecs.repr_to_instance(
+            self.user_dict, self.user_meta_model)
         self.assertIsInstance(user_instance, self.user_meta_model.get_class())
         self.assertIsInstance(user_instance.credentials,
                               self.user_meta_model.fields[2].get_class())
@@ -63,22 +84,33 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(user_instance.credentials.password, 'my_password')
         self.assertEqual(user_instance.address.city, 'my_city')
 
-    def test_dict_to_instance_bad_usage(self):
+    def test_repr_to_instance_sequence_field(self):
+        instance = ps.entity_codecs.repr_to_instance(
+            self.user_ma_repr, self.user_multiple_addresses_mm)
+        self.assertEqual(instance.addresses[0].city, 'MyCity')
+        self.assertEqual(instance.addresses[1].postal_code, '53102')
+
+    def test_repr_to_instance_bad_usage(self):
         bad_dict = {
             'username': 'my_username',
             'now_a_valid_key': {}
         }
-        self.assertRaises(TypeError, ps.entity_codecs.dict_to_instance,
+        self.assertRaises(TypeError, ps.entity_codecs.repr_to_instance,
                           bad_dict, self.user_meta_model)
 
-    def test_instance_to_dict(self):
-        user_dict = ps.entity_codecs.instance_to_dict(self.user_instance)
+    def test_instance_to_repr(self):
+        user_dict = ps.entity_codecs.instance_to_repr(self.user_instance)
         self.assertEqual(user_dict['credentials']['password'],
                          'my_password')
         self.assertEqual(user_dict['address']['city'],
                          'my_city')
         self.assertEqual(user_dict['username'],
                          'my_username')
+
+    def test_instance_to_repr_sequence_field(self):
+        instance_dict = ps.entity_codecs.instance_to_repr(self.user_ma)
+        self.assertEqual(instance_dict['addresses'][0]['city'], 'MyCity')
+        self.assertEqual(instance_dict['addresses'][1]['postal_code'], '53102')
 
 
 class TestJSON(unittest.TestCase):

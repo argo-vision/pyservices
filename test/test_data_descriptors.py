@@ -2,10 +2,12 @@ import unittest
 from datetime import datetime
 
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
-    Field, BooleanField, ComposedField
+    Field, BooleanField, ComposedField, SequenceField, IntegerField
 from pyservices.exceptions import ModelInitException
 
 
+# TODO refactor
+# TODO Sequence of SequenceField not working...
 class TestDataDescriptor(unittest.TestCase):
     def setUp(self):
         self.now = datetime.now()
@@ -40,14 +42,8 @@ class TestDataDescriptor(unittest.TestCase):
         inst = dtc(dt.isoformat())
         self.assertEqual(dt, inst.date)
 
-    def testMetaModelField(self):
-        self.assertRaises(ValueError, MetaModel, 'metaModel Name',
-                          self.title_field, self.title_field)
-        self.assertRaises(ValueError, MetaModel, 'MetaModel Name',
-                          self.title_field, self.title_field)
+    def testMetaModelWithNotFieldArgs(self):
         self.assertRaises(TypeError, MetaModel, 'MetaModel Name', 'Not a field')
-        self.assertRaises(ValueError, MetaModel, 'Duplicated fields',
-                          self.title_field, self.title_field)
 
     def testRepetitiveFieldName(self):
         self.assertRaises(ValueError, MetaModel, 'ModelName',
@@ -83,6 +79,62 @@ class TestDataDescriptor(unittest.TestCase):
         except ModelInitException as e:
             self.fail(e)
 
+    def testSequenceField(self):
+        email_mm = MetaModel('Email', StringField('address'),
+                             DateTimeField('creation_date'))
+        user_mm = MetaModel('User', StringField('name'),
+                            SequenceField('notes', optional=False,
+                                          data_type=StringField('note')),
+                            SequenceField('emails', data_type=email_mm()))
+
+        Email = email_mm.get_class()
+        emails = [Email('test@test.com', datetime.now()),
+                  Email('second@test.com', datetime.now())]
+        user_cls = user_mm.get_class()
+        try:
+            user = user_cls('UserName', ['Note1', 'Note2', 'Note3'],
+                            emails)
+        except ModelInitException as e:
+            self.fail(e)
+        self.assertEqual(user.emails[0].address, emails[0].address)
+        self.assertListEqual(user.notes, ['Note1', 'Note2', 'Note3'])
+        self.assertRaises(ModelInitException, user_cls, 'UserName',
+                          ['Note1', 1, 'Note3'], emails)
+        self.assertRaises(ModelInitException, user_cls, 'UserName',
+                          None, emails)
+
+    def testNestedSequences(self):
+        # TODO not working
+        email_mm = MetaModel('Email', StringField('address'),
+                             DateTimeField('creation_date'))
+        Email = email_mm.get_class()
+        emails = [Email('test@test.com', datetime.now()),
+                  Email('second@test.com', datetime.now())]
+        seq_seq_mm = MetaModel('Seqseq',
+                               SequenceField(
+                                   'outer',
+                                   data_type=SequenceField(
+                                       'innter',
+                                       data_type=email_mm())))
+        SeqSeq = seq_seq_mm.get_class()
+        try:
+            seq_seq = SeqSeq([emails, emails])
+        except Exception as e:
+            self.fail(e)
+
+    def testIntegerField(self):
+        number_mm = MetaModel('TwoDigitNumb',
+                              IntegerField('first_digit'),
+                              IntegerField('second_field'))
+        Numb = number_mm.get_class()
+        try:
+            n = Numb(1, 2)
+        except Exception as e:
+            self.fail(e)
+        self.assertRaises(ModelInitException, Numb, "not", "numbers")
+
+    # TODO once I create the ComposedField i cannot access the class
+    # TODO (and instantiate an obj)
     def testDeepMetaModel(self):
         credential_meta_model = MetaModel(
             'Credentials',
@@ -115,26 +167,3 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertIsInstance(user_instance, user_class)
         self.assertIsInstance(user_instance.credentials, credential_class)
 
-
-
-# UserModel = MetaModel(
-#     StringField("nick"),
-#     # ...
-#     CredentialsModel("credentials")
-#     # CompositeField("credentials",
-#     #               StringField("password"),
-#     #               StringField("vocalFeatures")
-#     #       )
-# )
-#
-# {
-#     "nick": "Pippo",
-#     # ...
-#     "credentials": {
-#         "pasword": "aaa",
-#         "vocalFeatures": "bbb"
-#     }
-# }
-#
-# Credentials = CredentialsModel.get_class()
-# User = UserModel.get_class()
