@@ -11,8 +11,6 @@ from .entity_codecs import JSON, Codec
 #   DELETE      /user/id        cancello
 
 
-# TODO NOT ENOUGHT DRY
-# TODO this decorators are related to a particolar type of interface (the REST one). They could be better organized (decorator/class)
 def rest_detail(meta_model, produces=None, uri=None):
     if produces and not issubclass(produces, Codec):
         raise TypeError(f'Expected {Codec}, found {type(produces)}')
