@@ -45,7 +45,8 @@ class Service:
                                          inspect.isclass(m) and issubclass(
                                              m, RestfulResource))
             resources = {
-                res[1].resource_path or f'{res[1].meta_model.name.lower()}s': res[1]
+                res[1].resource_path or f'{res[1].meta_model.name.lower()}s':
+                    res[1]
                 for res in members}
             base_path = self.__class__.base_path
             RestClient(f'http://{address}:{port}/{base_path}', resources)
@@ -94,9 +95,8 @@ class RestClient:
 
         Arguments:
             service_path (str): The URI of the resource service with the
-                information regarding the service, the port and the address
-            resources (dict): The keys are the name of the resources, the values
-                are the resources themselves
+                information regarding the service, the port and the address.
+            resources (Mapping[str, RestfulResource): Map of resources.
         """
         self.interfaces = {}
         self.resources_names = []

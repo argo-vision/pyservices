@@ -2,7 +2,7 @@ import abc
 import datetime
 import uuid
 
-from typing import NewType, Callable, TypeVar, Sequence, Optional, Union
+from typing import NewType, Callable, TypeVar, Sequence, Optional, Union, Mapping
 
 from pyservices.exceptions import ModelInitException
 
@@ -195,6 +195,11 @@ class MetaModel:
                             f'The field named "{field.name}"'
                             f'is not optional.')
                 else:
+                    # In this case, the initialization depends on a condition
+                    if isinstance(field, ConditionalField):
+                        value = (
+                            value,
+                            field_values.get(field.evaluation_field_name))
                     field_values[field.name] = field.init_value(value)
 
             instance = super(cls, cls).__new__(cls)  # TODO
@@ -335,16 +340,57 @@ class SequenceField(Field):
         self.data_type = data_type
         super().__init__(name, list, None, optional)
 
-    def init_value(self, values):
+    def init_value(self, value):
         """Return the value of a correct type.
 
         Checks the type of the elements of the list.
         """
-        values = super().init_value(values)
+        value = super().init_value(value)
         t = self.data_type
-        for el in values:
+        for el in value:
             # noinspection PyTypeHints
             if not isinstance(el, t.field_type):
                 raise ModelInitException(f'The type of the {el} is not '
                                          f'{t.field_type}')
-        return values
+        return value
+
+
+class ConditionalField(Field):
+    """A field with different MetaModels associated.
+
+    """
+    def __init__(self,
+                 name: str,
+                 meta_models: Mapping[str, MetaModel],
+                 evaluation_field_name: str,
+                 optional: Optional[bool] = False) -> None:
+        """ Initialize the ConditionalField.
+
+        The field_type is set to None and it will be dinamically evaluated when
+            a new model is initialized.
+
+        Attributes:
+            meta_models (Mapping[str, MetaModel]): The dict containing the
+                relations between field values and MetaModels.
+            evaluation_field_name (str): The str which indicated the title of
+                the field which will be used to select the right MetaModel.
+
+        """
+        self.meta_models = meta_models
+        self.evaluation_field_name = evaluation_field_name
+        super().__init__(name, None, None, optional)
+
+    def init_value(self, value):
+        """I have to type check the value at when the new model is being
+            created.
+
+        Attributes:
+            value (tuple): the first element must contain the value,
+                the second element must contain the MetaModel identified(str)
+
+        """
+        conditional_meta_model = self.meta_models.get(value[1])
+        if not conditional_meta_model:
+            raise ModelInitException(f'There are no matching MetaModels '
+                                     f'identified by {value[1]}.')
+        return conditional_meta_model().init_value(value[0])

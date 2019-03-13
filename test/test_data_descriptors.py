@@ -2,7 +2,8 @@ import unittest
 from datetime import datetime
 
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
-    Field, BooleanField, ComposedField, SequenceField, IntegerField
+    Field, BooleanField, ComposedField, SequenceField, IntegerField, \
+    ConditionalField
 from pyservices.exceptions import ModelInitException
 
 
@@ -131,10 +132,43 @@ class TestDataDescriptor(unittest.TestCase):
             n = Numb(1, 2)
         except Exception as e:
             self.fail(e)
-        self.assertRaises(ModelInitException, Numb, "not", "numbers")
+        self.assertRaises(ModelInitException, Numb, 'not', 'numbers')
 
-    # TODO once I create the ComposedField i cannot access the class
-    # TODO (and instantiate an obj)
+    def testConditionalField(self):
+        access = ComposedField('access', StringField('secret'),
+                               StringField('service'))
+        first_connector = MetaModel('First_connector', StringField('app_id'),
+                                    StringField('token'), StringField('secret'))
+        second_connector = MetaModel('Second_connector', StringField('token'),
+                                     access)
+        connector = ConditionalField('connector', {
+            'first': first_connector,
+            'second': second_connector}, evaluation_field_name='connector_type')
+
+        account = MetaModel('Account', StringField('email'),
+                            connector, StringField('connector_type'))
+
+        Access = access.meta_model.get_class()
+        Account = account.get_class()
+        first_conn_auth = first_connector.get_class()('my_app_id',
+                                                      'my_token',
+                                                      'my_secret')
+
+        second_conn_auth = second_connector.get_class()('token',
+                                                       Access('my_secret',
+                                                              'my_service'))
+
+        first_type_account = Account('my@email.com', first_conn_auth,
+                                     connector_type='first')
+
+        second_type_account = Account('my@email.com', second_conn_auth,
+                                      connector_type='second')
+        self.assertEqual(first_type_account.connector.secret, 'my_secret')
+        self.assertEqual(second_type_account.connector.access.service,
+                         'my_service')
+
+    # TODO once I create the ComposedField inside the MetaModel I cannot access
+    #  the class (and instantiate an obj)
     def testDeepMetaModel(self):
         credential_meta_model = MetaModel(
             'Credentials',

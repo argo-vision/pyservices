@@ -21,6 +21,15 @@ account_field = ComposedField('account',
 accounts_field = SequenceField('accounts',
                     data_type=account_field,
                     optional=True)
+                    
+
+connectors = {
+    'microsoft_365': m360_connector_meta_model,
+    'trello': trello_auth_meta_model}
+
+connector_field = ConditionalField('connector', 
+                    connectors,
+                    evaluaton_field='service_type')
 ```
 
 ## MetaModel
@@ -35,7 +44,7 @@ credentials_meta_model = MetaModel('Credentials', StringField('password'),
                             StringField('vocalFeatures'))
 
 user_meta_model = MetaModel('User', 
-                    name_field, date_field,    # "Simple" fields
+                    name_field, date_field,     # "Simple" fields
                     accounts_field,             # SequenceField
                     credentials_meta_model())   # ComposedField generated from a meta model         
 ```
