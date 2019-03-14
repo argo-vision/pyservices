@@ -175,7 +175,10 @@ class MetaModel:
                     'Inconsistencies between args and kwargs.')
             field_values = {**field_values, **kwargs}
 
-            for field in self.fields:
+            ordered_fields = sorted(
+                self.fields,
+                key=lambda field: isinstance(field, ConditionalField))
+            for field in ordered_fields:
                 value = field_values.get(field.name)
                 if not value:
                     if field.default:
@@ -195,6 +198,7 @@ class MetaModel:
                             f'The field named "{field.name}"'
                             f'is not optional.')
                 else:
+                    # TODO ensure ConditionalField are the last evaluated values (should be fixed)
                     # In this case, the initialization depends on a condition
                     if isinstance(field, ConditionalField):
                         value = (

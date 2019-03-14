@@ -155,8 +155,8 @@ class TestDataDescriptor(unittest.TestCase):
                                                       'my_secret')
 
         second_conn_auth = second_connector.get_class()('token',
-                                                       Access('my_secret',
-                                                              'my_service'))
+                                                        Access('my_secret',
+                                                               'my_service'))
 
         first_type_account = Account('my@email.com', first_conn_auth,
                                      connector_type='first')

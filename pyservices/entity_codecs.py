@@ -5,7 +5,8 @@ import datetime
 from typing import Union
 
 from . import http_content_types
-from .data_descriptors import MetaModel, SequenceField, ComposedField
+from .data_descriptors import MetaModel, SequenceField, ComposedField, \
+    ConditionalField
 from .layer_supertypes import Model
 
 
@@ -62,6 +63,7 @@ def instance_to_repr(val: object):
             for k in instance_attributes(val)}
 
 
+# TODO refactor
 def repr_to_instance(val: Union[dict, list], meta_model: type):
     """Recursively recreates an instance given the MetaModel.
 
@@ -79,18 +81,25 @@ def repr_to_instance(val: Union[dict, list], meta_model: type):
     for k in val.keys():
         t = next((field for field in meta_model.fields if field.name == k),
                  None)
-
+        # t is a ConditionalField
         # t is a ComposedField
         if isinstance(val[k], dict):
-            if not isinstance(t, ComposedField):
-                raise TypeError("The MetaModel is not compatible with the"
+            if isinstance(t, ComposedField):
+                val[k] = repr_to_instance(val[k], t.meta_model)
+            elif isinstance(t, ConditionalField):
+                condition = val.get(t.evaluation_field_name)
+                if not condition or not t.meta_models.get(condition):
+                    raise TypeError("The MetaModel is not compatible with the "
+                                    "given val.")
+                val[k] = repr_to_instance(val[k], t.meta_models.get(condition))
+            else:
+                raise TypeError("The MetaModel is not compatible with the "
                                 "given val.")
-            val[k] = repr_to_instance(val[k], t.meta_model)
 
         # t is a SequenceField
         elif isinstance(val[k], list):
             if not isinstance(t, SequenceField):
-                raise TypeError("The MetaModel is not compatible with the"
+                raise TypeError("The MetaModel is not compatible with the "
                                 "given val.")
             val[k] = [repr_to_instance(el, t.data_type.meta_model)
                       for el in val[k]]

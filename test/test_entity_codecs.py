@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pyservices as ps
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
-    ComposedField, SequenceField
+    ComposedField, SequenceField, ConditionalField
 
 
 # TODO refactor
@@ -112,6 +112,108 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(instance_dict['addresses'][0]['city'], 'MyCity')
         self.assertEqual(instance_dict['addresses'][1]['postal_code'], '53102')
 
+    def test_instance_to_repr_conditional_field(self):
+        access = ComposedField('access', StringField('secret'),
+                               StringField('service'))
+        first_connector = MetaModel('First_connector', StringField('app_id'),
+                                    StringField('token'), StringField('secret'))
+        second_connector = MetaModel('Second_connector', StringField('token'),
+                                     access)
+        connector = ConditionalField('connector', {
+            'first': first_connector,
+            'second': second_connector}, evaluation_field_name='connector_type')
+
+        account = MetaModel('Account', StringField('email'),
+                            connector, StringField('connector_type'))
+
+        Access = access.meta_model.get_class()
+        Account = account.get_class()
+        first_conn_auth = first_connector.get_class()('my_app_id',
+                                                      'my_token',
+                                                      'my_secret')
+
+        second_conn_auth = second_connector.get_class()('token',
+                                                        Access('my_secret',
+                                                               'my_service'))
+
+        first_type_account = Account('my@email.com', first_conn_auth,
+                                     connector_type='first')
+
+        second_type_account = Account('my@email.com', second_conn_auth,
+                                      connector_type='second')
+
+        try:
+            fa_repr = ps.entity_codecs.instance_to_repr(
+                first_type_account)
+            sa_repr = ps.entity_codecs.instance_to_repr(
+                second_type_account)
+        except Exception as e:
+            self.fail(e)
+        self.assertEqual(fa_repr['connector']['app_id'], 'my_app_id')
+        self.assertEqual(sa_repr['connector']['access']['secret'],
+                         'my_secret')
+
+
+
+    def test_repr_to_instance_conditional_field(self):
+        access = ComposedField('access', StringField('secret'),
+                               StringField('service'))
+        first_connector = MetaModel('First_connector', StringField('app_id'),
+                                    StringField('token'), StringField('secret'))
+        second_connector = MetaModel('Second_connector', StringField('token'),
+                                     access)
+        connector = ConditionalField('connector', {
+            'first': first_connector,
+            'second': second_connector}, evaluation_field_name='connector_type')
+
+        account = MetaModel('Account', StringField('email'),
+                            connector, StringField('connector_type'))
+
+        Access = access.meta_model.get_class()
+        Account = account.get_class()
+        first_conn_auth = first_connector.get_class()('my_app_id',
+                                                      'my_token',
+                                                      'my_secret')
+
+        second_conn_auth = second_connector.get_class()('token',
+                                                        Access('my_secret',
+                                                               'my_service'))
+
+        first_type_account = Account('my@email.com', first_conn_auth,
+                                     connector_type='first')
+
+        second_type_account = Account('my@email.com', second_conn_auth,
+                                      connector_type='second')
+
+        first_account_repr = {
+            "connector": {
+                "app_id": "my_app_id",
+                "secret": "my_secret",
+                "token": "my_token"},
+            "connector_type": "first",
+            "email": "my@email.com"}
+
+        second_account_repr = {
+            "connector": {
+                "access": {
+                    "secret": "my_secret",
+                    "service": "my_service"},
+                "token": "token"},
+            "connector_type": "second",
+            "email": "my@email.com"}
+
+        try:
+            fta = ps.entity_codecs.repr_to_instance(first_account_repr,
+                                                    account)
+            sta = ps.entity_codecs.repr_to_instance(second_account_repr,
+                                                    account)
+        except Exception as e:
+            self.fail(e)
+        self.assertEqual(fta.connector.app_id,
+                         first_type_account.connector.app_id)
+        self.assertEqual(sta.connector.access.service,
+                         second_type_account.connector.access.service)
+
 
 class TestJSON(unittest.TestCase):
 
@@ -145,8 +247,8 @@ class TestJSON(unittest.TestCase):
         self.assertEqual(instance_json, self.user_json)
 
     def test_encode(self):
-        self.codec.decode(self.user_json, self.user_meta_model)
-
+        user = self.codec.decode(self.user_json, self.user_meta_model)
+        self.assertEqual(user.address.city, 'my_city')
 
 class Address:
     def __init__(self, city, postal_code):
