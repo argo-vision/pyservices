@@ -3,7 +3,7 @@ import pyservices as ps
 from pyservices.data_descriptors import MetaModel
 
 
-# TODO these tests are too repetitive
+# TODO remove
 class TestDecorator(unittest.TestCase):
 
     def setUp(self):

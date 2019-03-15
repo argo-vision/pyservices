@@ -8,7 +8,7 @@ from pyservices.exceptions import ModelInitException
 
 
 class Field(abc.ABC):
-    """Abstract class which represents a field in a MetaModel.
+    """ Abstract class which represents a field in a MetaModel.
 
     Class attributes:
         T (typing.TypeVar): The generic param used in the field_type.
@@ -49,7 +49,7 @@ class Field(abc.ABC):
         self.default = default
 
     def init_value(self, value):
-        """Return the value of a correct type.
+        """ Return the value of a correct type.
 
         If the field_type is not a builtin, it may be necessary to perform
             some operations to value.
@@ -85,7 +85,7 @@ class MetaModel:
     def __init__(self,
                  name: str,
                  *args: Sequence[FieldType]):
-        """Initialize the meta model.
+        """ Initialize the meta model.
 
         Attributes:
             name (str): The name of the class which will be generated. It also
@@ -129,14 +129,14 @@ class MetaModel:
         MetaModel.modelClasses[self.name] = self._generate_class()
 
     def __call__(self, name: str = None):
-        """Returns a ComposedField created from the fields of the MetaModel.
+        """ Returns a ComposedField created from the fields of the MetaModel.
         """
         if not name:
             name = str.lower(self.name[0]) + self.name[1:]
         return ComposedField(name, meta_model=self)
 
     def get_class(self):
-        """Returns the class representing the model described by the MetaModel.
+        """ Returns the class representing the model described by the MetaModel.
 
         Returns:
             The class stored in the modelClasses dict identified by name as key.
@@ -144,10 +144,10 @@ class MetaModel:
         return MetaModel.modelClasses.get(self.name)
 
     def _generate_class(self):
-        """Generate the class based on the fields of the meta model.
+        """ Generate the class based on the fields of the meta model.
         """
         def new(cls, *args, **kwargs):
-            """Create and return a new instance of the model.
+            """ Create and return a new instance of the model.
 
             Attributes:
                 args: A sequence of the values used to initialize the
@@ -219,7 +219,7 @@ class MetaModel:
 
 
 class StringField(Field):
-    """A string field.
+    """ A string field.
     """
 
     def __init__(self,
@@ -230,7 +230,7 @@ class StringField(Field):
 
 
 class BooleanField(Field):
-    """A boolean field.
+    """ A boolean field.
     """
 
     def __init__(self,
@@ -241,7 +241,7 @@ class BooleanField(Field):
 
 
 class IntegerField(Field):
-    """An integer field.
+    """ An integer field.
     """
 
     def __init__(self,
@@ -254,7 +254,7 @@ class IntegerField(Field):
 
 
 class FloatField(Field):
-    """An float field.
+    """ An float field.
     """
 
     def __init__(self,
@@ -267,7 +267,7 @@ class FloatField(Field):
 
 
 class DateTimeField(Field):
-    """A datetime field.
+    """ A datetime field.
     """
 
     def __init__(self,
@@ -279,7 +279,7 @@ class DateTimeField(Field):
         super().__init__(name, datetime.datetime, default, optional)
 
     def init_value(self, value):
-        """Initialize the datetime value.
+        """ Initialize the datetime value.
 
         It initialize the datetime in different ways according to the type of
             value.
@@ -292,7 +292,7 @@ class DateTimeField(Field):
 
 
 class ComposedField(Field):
-    """A group of fields.
+    """ A group of fields.
 
     This class inherits from Field.
     If a ComposedField is initialized through a MetaModel __call__ method,
@@ -323,15 +323,16 @@ class ComposedField(Field):
         super().__init__(name, self.meta_model.get_class(), None, optional)
 
     def get_class(self):
-        """Return the class of the MetaModel.
+        """ Return the class of the MetaModel.
         """
         return self.meta_model.get_class()
 
 
 class SequenceField(Field):
-    """A list field.
+    """ A list field.
     """
 
+    # TODO data_type
     def __init__(self,
                  name: str,
                  data_type: Field,
@@ -345,7 +346,7 @@ class SequenceField(Field):
         super().__init__(name, list, None, optional)
 
     def init_value(self, value):
-        """Return the value of a correct type.
+        """ Return the value of a correct type.
 
         Checks the type of the elements of the list.
         """
@@ -359,8 +360,19 @@ class SequenceField(Field):
         return value
 
 
+class DictField(Field):
+    """ A field representing a dict.
+
+    TODO
+    """
+    def __init__(self,
+                 name: str,
+                 optional: Optional[bool] = False) -> None:
+        super().__init__(name, dict, None, optional)
+
+
 class ConditionalField(Field):
-    """A field with different MetaModels associated.
+    """ A field with different MetaModels associated.
 
     """
     def __init__(self,

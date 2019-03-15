@@ -6,7 +6,7 @@ from typing import Union
 
 from . import http_content_types
 from .data_descriptors import MetaModel, SequenceField, ComposedField, \
-    ConditionalField
+    ConditionalField, DictField
 from .layer_supertypes import Model
 
 
@@ -43,7 +43,7 @@ def instance_callable_objects(inst):
             and callable(get(inst, n))]
 
 
-def instance_to_repr(val: object):
+def instance_to_dict_repr(val: object):
     """Recursively generates a dict (or a list of dict).
 
     Attributes:
@@ -51,20 +51,20 @@ def instance_to_repr(val: object):
     """
 
     # Single object
-    if isinstance(val, (bool, str, int, float, datetime.datetime)):
+    if isinstance(val, (dict, bool, str, int, float, datetime.datetime)):
         return val
 
     # List of objects
     if isinstance(val, list):
-        return [instance_to_repr(el) for el in val]
+        return [instance_to_dict_repr(el) for el in val]
 
     # Recursive encoding:
-    return {k: instance_to_repr(get(val, k))
+    return {k: instance_to_dict_repr(get(val, k))
             for k in instance_attributes(val)}
 
 
 # TODO refactor
-def repr_to_instance(val: Union[dict, list], meta_model: type):
+def dict_repr_to_instance(val: Union[dict, list], meta_model: type):
     """Recursively recreates an instance given the MetaModel.
 
     Attributes:
@@ -75,23 +75,30 @@ def repr_to_instance(val: Union[dict, list], meta_model: type):
 
     # List of objects
     if isinstance(val, list):
-        return [repr_to_instance(el, meta_model) for el in val]
+        return [dict_repr_to_instance(el, meta_model) for el in val]
 
     # Single object
     for k in val.keys():
         t = next((field for field in meta_model.fields if field.name == k),
                  None)
-        # t is a ConditionalField
-        # t is a ComposedField
         if isinstance(val[k], dict):
-            if isinstance(t, ComposedField):
-                val[k] = repr_to_instance(val[k], t.meta_model)
+            # t is a DictField
+            if isinstance(t, DictField):
+                pass
+
+            # t is a ComposedField
+            elif isinstance(t, ComposedField):
+                val[k] = dict_repr_to_instance(val[k], t.meta_model)
+
+            # t is a ConditionalField
             elif isinstance(t, ConditionalField):
                 condition = val.get(t.evaluation_field_name)
                 if not condition or not t.meta_models.get(condition):
                     raise TypeError("The MetaModel is not compatible with the "
                                     "given val.")
-                val[k] = repr_to_instance(val[k], t.meta_models.get(condition))
+                val[k] = dict_repr_to_instance(val[k], t.meta_models.get(
+                    condition))
+
             else:
                 raise TypeError("The MetaModel is not compatible with the "
                                 "given val.")
@@ -101,7 +108,7 @@ def repr_to_instance(val: Union[dict, list], meta_model: type):
             if not isinstance(t, SequenceField):
                 raise TypeError("The MetaModel is not compatible with the "
                                 "given val.")
-            val[k] = [repr_to_instance(el, t.data_type.meta_model)
+            val[k] = [dict_repr_to_instance(el, t.data_type.meta_model)
                       for el in val[k]]
 
     # Instantiation:
@@ -153,8 +160,8 @@ class JSON(Codec):
 
     @classmethod
     def encode(cls, value: Model):
-        return json.dumps(instance_to_repr(value), default=str)
+        return json.dumps(instance_to_dict_repr(value), default=str)
 
     @classmethod
     def decode(cls, value: str, meta_model: MetaModel):
-        return repr_to_instance(json.loads(value), meta_model)
+        return dict_repr_to_instance(json.loads(value), meta_model)

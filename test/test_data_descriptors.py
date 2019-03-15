@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
     Field, BooleanField, ComposedField, SequenceField, IntegerField, \
-    ConditionalField
+    ConditionalField, DictField
 from pyservices.exceptions import ModelInitException
 
 
@@ -166,6 +166,21 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertEqual(first_type_account.connector.secret, 'my_secret')
         self.assertEqual(second_type_account.connector.access.service,
                          'my_service')
+
+    def testDictField(self):
+        color_fields = DictField('colors')
+        palette_meta_model = MetaModel('Palette', StringField('name'),
+                                       color_fields)
+        Palette = palette_meta_model.get_class()
+
+        try:
+            p = Palette('my_palette', {
+                'red': '#ff0000',
+                'green': '#00ff00',
+                'blue': '#0000ff'})
+        except Exception as e:
+            self.fail(e)
+        self.assertEqual(p.colors['red'], '#ff0000')
 
     # TODO once I create the ComposedField inside the MetaModel I cannot access
     #  the class (and instantiate an obj)
