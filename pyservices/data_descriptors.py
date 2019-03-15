@@ -1,10 +1,13 @@
 import abc
 import datetime
+import logging
 import uuid
 
 from typing import NewType, Callable, TypeVar, Sequence, Optional, Union, Mapping
 
-from pyservices.exceptions import ModelInitException
+import pyservices as ps
+from pyservices.exceptions import ModelInitException, MetaTypeException
+
 
 
 class Field(abc.ABC):
@@ -99,9 +102,11 @@ class MetaModel:
                 If different fields contain the same name attribute.
             TypeError:
                 If the first argument is not a string.
-                If the args are not Field's subclass instances.
             ModelInitException:
                 If the name is already taken by another MetaModel.
+            MetaTypeException:
+                If the args are not Field's subclass instances.
+
         """
 
         if MetaModel.modelClasses.get(name):
@@ -116,7 +121,7 @@ class MetaModel:
 
         for arg in args:
             if not isinstance(arg, Field):
-                raise TypeError(
+                raise MetaTypeException(
                     f'A {type(arg)} type is not a valid type. A {Field} is '
                     f'expected.')
         title_set = {field.name for field in args}
@@ -127,6 +132,8 @@ class MetaModel:
         self.fields = args
 
         MetaModel.modelClasses[self.name] = self._generate_class()
+        logging.getLogger(ps.LOGGER_NAME).debug(f'A new meta model has been '
+                                                f'created. [{self.name}]')
 
     def __call__(self, name: str = None):
         """ Returns a ComposedField created from the fields of the MetaModel.
@@ -304,7 +311,7 @@ class ComposedField(Field):
                  name: str,
                  *args: Sequence[MetaModel.FieldType],
                  optional: Optional[bool] = False,
-                 meta_model: type = None) -> None:
+                 meta_model: MetaModel = None) -> None:
         """ Initialize the ComposedField.
 
         Attributes:

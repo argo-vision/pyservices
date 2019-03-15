@@ -4,7 +4,7 @@ from datetime import datetime
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
     Field, BooleanField, ComposedField, SequenceField, IntegerField, \
     ConditionalField, DictField
-from pyservices.exceptions import ModelInitException
+from pyservices.exceptions import ModelInitException, MetaTypeException
 
 
 # TODO refactor
@@ -44,7 +44,8 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertEqual(dt, inst.date)
 
     def testMetaModelWithNotFieldArgs(self):
-        self.assertRaises(TypeError, MetaModel, 'MetaModel Name', 'Not a field')
+        self.assertRaises(MetaTypeException, MetaModel,
+                          'MetaModel Name', 'Not a field')
 
     def testRepetitiveFieldName(self):
         self.assertRaises(ValueError, MetaModel, 'ModelName',

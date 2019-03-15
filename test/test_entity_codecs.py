@@ -6,6 +6,7 @@ import pyservices as ps
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
     ComposedField, SequenceField, ConditionalField, DictField
 
+from pyservices.exceptions import MetaTypeException
 
 # TODO refactor
 class TestUtils(unittest.TestCase):
@@ -95,7 +96,7 @@ class TestUtils(unittest.TestCase):
             'username': 'my_username',
             'now_a_valid_key': {}
         }
-        self.assertRaises(TypeError, ps.entity_codecs.dict_repr_to_instance,
+        self.assertRaises(MetaTypeException, ps.entity_codecs.dict_repr_to_instance,
                           bad_dict, self.user_meta_model)
 
     def test_instance_to_dict_repr(self):

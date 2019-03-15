@@ -8,6 +8,7 @@ from . import http_content_types
 from .data_descriptors import MetaModel, SequenceField, ComposedField, \
     ConditionalField, DictField
 from .layer_supertypes import Model
+from pyservices.exceptions import MetaTypeException
 
 
 def get(inst, memb):
@@ -94,19 +95,19 @@ def dict_repr_to_instance(val: Union[dict, list], meta_model: type):
             elif isinstance(t, ConditionalField):
                 condition = val.get(t.evaluation_field_name)
                 if not condition or not t.meta_models.get(condition):
-                    raise TypeError("The MetaModel is not compatible with the "
+                    raise MetaTypeException("The MetaModel is not compatible with the "
                                     "given val.")
                 val[k] = dict_repr_to_instance(val[k], t.meta_models.get(
                     condition))
 
             else:
-                raise TypeError("The MetaModel is not compatible with the "
+                raise MetaTypeException("The MetaModel is not compatible with the "
                                 "given val.")
 
         # t is a SequenceField
         elif isinstance(val[k], list):
             if not isinstance(t, SequenceField):
-                raise TypeError("The MetaModel is not compatible with the "
+                raise MetaTypeException("The MetaModel is not compatible with the "
                                 "given val.")
             val[k] = [dict_repr_to_instance(el, t.data_type.meta_model)
                       for el in val[k]]

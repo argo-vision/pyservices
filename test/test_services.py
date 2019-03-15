@@ -68,15 +68,15 @@ class TestRestServer(unittest.TestCase):
                     del accounts[int(res_id)]
 
         self.AccountManager = AccountManager
-
-        try:
-            self.thread, self.httpd = self.AccountManager.rest_server(
-                self.AccountManager({
+        account_manager_service = self.AccountManager({
                     'port': 7890,
-                    'framework': ps.frameworks.FALCON}))
-            self.client_proxy = self.AccountManager.rest_client(
-                self.AccountManager(
-                    {'framework': ps.frameworks.FALCON}))
+                    'framework': ps.frameworks.FALCON})
+        try:
+            # TODO rest service the same
+            self.thread, self.httpd = account_manager_service.rest_server()
+
+            # TODO check stato opp no
+            self.client_proxy = account_manager_service.rest_client()
         except Exception as e:
             self.fail(e)
 
