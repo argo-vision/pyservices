@@ -361,15 +361,11 @@ class ListField(Field):
         return value
 
 
-class DictField(Field):
+class DictField(SimpleField):
     """ A field representing a dict.
 
-    TODO
     """
-    def __init__(self,
-                 name: str,
-                 optional: Optional[bool] = False) -> None:
-        super().__init__(name, dict, None, optional)
+    static_field_type = dict
 
 
 class ConditionalField(Field):
