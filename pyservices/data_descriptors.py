@@ -3,11 +3,11 @@ import datetime
 import logging
 import uuid
 
-from typing import NewType, Callable, TypeVar, Sequence, Optional, Union, Mapping
+from typing import NewType, Callable, TypeVar, Sequence, Optional, Union, \
+    Mapping
 
 import pyservices as ps
 from pyservices.exceptions import ModelInitException, MetaTypeException
-
 
 
 class Field(abc.ABC):
@@ -225,65 +225,52 @@ class MetaModel:
         })
 
 
-class StringField(Field):
+class SimpleField(Field):
+    """A SimpleField is Field with a static build in field_type.
+
+    Class attributes:
+        static_field_type (type): The static type of the Field.
+
+    """
+    static_field_type = None
+
+    def __init__(self,
+                 name: str,
+                 default: Union[static_field_type,
+                                Callable[..., static_field_type], None] = None,
+                 optional: Optional[bool] = False) -> None:
+        super().__init__(name, self.__class__.static_field_type,
+                         default, optional)
+
+
+class StringField(SimpleField):
     """ A string field.
     """
-
-    def __init__(self,
-                 name: str,
-                 default: Union[str, Callable[..., str], None] = None,
-                 optional: Optional[bool] = False) -> None:
-        super().__init__(name, str, default, optional)
+    static_field_type = str
 
 
-class BooleanField(Field):
+class BooleanField(SimpleField):
     """ A boolean field.
     """
-
-    def __init__(self,
-                 name: str,
-                 default: Union[bool, Callable[..., bool], None] = None,
-                 optional: Optional[bool] = False) -> None:
-        super().__init__(name, bool, default, optional)
+    static_field_type = bool
 
 
-class IntegerField(Field):
+class IntegerField(SimpleField):
     """ An integer field.
     """
-
-    def __init__(self,
-                 name: int,
-                 default: Union[
-                     int, Callable[..., int], None] = None,
-                 optional: Optional[int] = False) -> None:
-        super().__init__(name, int, default,
-                         optional)
+    static_field_type = int
 
 
-class FloatField(Field):
-    """ An float field.
+class FloatField(SimpleField):
+    """ An integer field.
     """
-
-    def __init__(self,
-                 name: float,
-                 default: Union[
-                     float, Callable[..., float], None] = None,
-                 optional: Optional[float] = False) -> None:
-        super().__init__(name, float, default,
-                         optional)
+    static_field_type = float
 
 
-class DateTimeField(Field):
+class DateTimeField(SimpleField):
     """ A datetime field.
     """
-
-    def __init__(self,
-                 name: str,
-                 default: Union[datetime.datetime,
-                                Callable[..., datetime.datetime],
-                                None] = None,
-                 optional: Optional[bool] = False) -> None:
-        super().__init__(name, datetime.datetime, default, optional)
+    static_field_type = datetime.datetime
 
     def init_value(self, value):
         """ Initialize the datetime value.
@@ -335,21 +322,26 @@ class ComposedField(Field):
         return self.meta_model.get_class()
 
 
-class SequenceField(Field):
+class ListField(Field):
     """ A list field.
     """
 
-    # TODO data_type
     def __init__(self,
                  name: str,
-                 data_type: Field,
+                 data_type: Union[SimpleField.__class__, MetaModel],
                  optional: Optional[bool] = False) -> None:
-        """ Initialize the SequenceField
+        """ Initialize the ListField
         Attributes:
-            data_type (Field): The type of the fields inside the list.
+            data_type (Union[SimpleField.__class__, MetaModel]): An object used
+                to discover the type of the data represented by this ListField.
         """
-
-        self.data_type = data_type
+        if isinstance(data_type, MetaModel) \
+                or issubclass(data_type, SimpleField):
+            self.data_type = data_type
+        else:
+            raise MetaTypeException(f'The data_type must be either a '
+                                    f'SimpleField or a MetaModel instance, not '
+                                    f'a {type(data_type)}.')
         super().__init__(name, list, None, optional)
 
     def init_value(self, value):
@@ -358,12 +350,14 @@ class SequenceField(Field):
         Checks the type of the elements of the list.
         """
         value = super().init_value(value)
-        t = self.data_type
+        if isinstance(self.data_type, MetaModel):
+            t = self.data_type.get_class() # TODO if the uniqueness of ComposedField brake something
+        elif issubclass(self.data_type, SimpleField):
+            t = self.data_type.static_field_type
         for el in value:
             # noinspection PyTypeHints
-            if not isinstance(el, t.field_type):
-                raise ModelInitException(f'The type of the {el} is not '
-                                         f'{t.field_type}')
+            if not isinstance(el, t):
+                raise ModelInitException(f'The type of the {el} is not {t}')
         return value
 
 

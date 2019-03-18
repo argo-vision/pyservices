@@ -4,9 +4,10 @@ from datetime import datetime
 
 import pyservices as ps
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
-    ComposedField, SequenceField, ConditionalField, DictField
+    ComposedField, ListField, ConditionalField, DictField
 
 from pyservices.exceptions import MetaTypeException
+
 
 # TODO refactor
 class TestUtils(unittest.TestCase):
@@ -45,7 +46,7 @@ class TestUtils(unittest.TestCase):
         self.user_multiple_addresses_mm = MetaModel(
             'UserMA', StringField('username'),
             DateTimeField('last_access'),
-            SequenceField('addresses', data_type=self.address_meta_model())
+            ListField('addresses', data_type=self.address_meta_model)
         )
 
         self.addresses = [
@@ -96,7 +97,8 @@ class TestUtils(unittest.TestCase):
             'username': 'my_username',
             'now_a_valid_key': {}
         }
-        self.assertRaises(MetaTypeException, ps.entity_codecs.dict_repr_to_instance,
+        self.assertRaises(MetaTypeException,
+                          ps.entity_codecs.dict_repr_to_instance,
                           bad_dict, self.user_meta_model)
 
     def test_instance_to_dict_repr(self):

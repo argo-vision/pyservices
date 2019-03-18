@@ -5,8 +5,8 @@ import datetime
 from typing import Union
 
 from . import http_content_types
-from .data_descriptors import MetaModel, SequenceField, ComposedField, \
-    ConditionalField, DictField
+from .data_descriptors import MetaModel, ListField, ComposedField, \
+    ConditionalField, DictField, SimpleField
 from .layer_supertypes import Model
 from pyservices.exceptions import MetaTypeException
 
@@ -95,23 +95,29 @@ def dict_repr_to_instance(val: Union[dict, list], meta_model: type):
             elif isinstance(t, ConditionalField):
                 condition = val.get(t.evaluation_field_name)
                 if not condition or not t.meta_models.get(condition):
-                    raise MetaTypeException("The MetaModel is not compatible with the "
-                                    "given val.")
+                    raise MetaTypeException("The MetaModel is not compatible "
+                                            "with the given val.")
                 val[k] = dict_repr_to_instance(val[k], t.meta_models.get(
                     condition))
 
             else:
-                raise MetaTypeException("The MetaModel is not compatible with the "
-                                "given val.")
+                raise MetaTypeException("The MetaModel is not compatible with "
+                                        "the given val.")
 
-        # t is a SequenceField
+        # t is a ListField
         elif isinstance(val[k], list):
-            if not isinstance(t, SequenceField):
-                raise MetaTypeException("The MetaModel is not compatible with the "
-                                "given val.")
-            val[k] = [dict_repr_to_instance(el, t.data_type.meta_model)
-                      for el in val[k]]
-
+            if not isinstance(t, ListField):
+                raise MetaTypeException("The MetaModel is not compatible "
+                                        "with the given val.")
+            if isinstance(t.data_type, MetaModel):
+                val[k] = [dict_repr_to_instance(el, t.data_type)
+                          for el in val[k]]
+            elif issubclass(t.data_type, SimpleField):
+                val[k] = [t.init_value(None, el)  # TODO check if this could be dangerous
+                          for el in val[k]]
+            else:
+                raise MetaTypeException("The MetaModel is not compatible "
+                                        "with the given val.")
     # Instantiation:
     return meta_model.get_class()(**val)
 
