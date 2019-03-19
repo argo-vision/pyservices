@@ -1,27 +1,30 @@
 import abc
 
 
+class InterfaceBase(abc.ABC):
+    # TODO docs
+    interface_type_id = None
+
+    def __init__(self, service):
+        self._service = service
+
+
 # TODO class method approach?
-class RestfulResource(abc.ABC):
+class RestfulResource(InterfaceBase):
     """Restful interface of a single Resource.
 
     """
-    interface_type_id = 'RESTFUL'
+    interface_type_id = 'RESTFUL'  # TODO is it really necessary?
     meta_model = None
     resource_path = None
     codec = None
 
-    @classmethod
-    def collection(cls): pass
+    def collection(self): pass
 
-    @classmethod
-    def detail(cls): pass
+    def detail(self, res_id): pass
 
-    @classmethod
-    def add(cls): pass
+    def add(self, resource): pass
 
-    @classmethod
-    def update(cls): pass
+    def update(self, res_id, resource): pass
 
-    @classmethod
-    def delete(cls): pass
+    def delete(self, res_id): pass

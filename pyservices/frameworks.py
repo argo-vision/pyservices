@@ -1,11 +1,13 @@
 import falcon
 import inspect
+import json
 
 from pyservices import entity_codecs
 from pyservices.exceptions import InterfaceDefinitionException
 
 
 # TODO refactor
+# TODO work on robustness, exceptions, etc
 
 # REST Framework
 FALCON = 'Falcon'
@@ -61,6 +63,7 @@ class FalconResourceGenerator:
 
     def _resource_get(self, req, resp, res_id):
         resp.http_content_type = self.codec.http_content_type
+        res_id = json.loads(res_id)  # TODO check requests, not nice
 
         try:
             if self.detail:
@@ -73,6 +76,7 @@ class FalconResourceGenerator:
 
     def _resource_post(self, req, resp, res_id):
         resp.http_content_type = self.codec.http_content_type
+        res_id = json.loads(res_id)  # TODO check requests, not nice
 
         try:
             if self.update:
@@ -87,6 +91,7 @@ class FalconResourceGenerator:
 
     def _resource_delete(self, req, resp, res_id):
         resp.http_content_type = self.codec.http_content_type
+        res_id = json.loads(res_id)  # TODO check requests, not nice
 
         try:
             if self.delete:

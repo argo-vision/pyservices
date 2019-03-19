@@ -9,6 +9,7 @@ from .decorators import rest_add, rest_collection, rest_delete, \
 from .entity_codecs import JSON, Codec
 from .layer_supertypes import Model, Service
 from . import http_content_types, frameworks
+from .interfaces import RestfulResource
 
 LOGGER_NAME = 'pyservices'
 
@@ -29,3 +30,5 @@ logger_config = {
             'level': 'DEBUG'}}}
 logging.config.dictConfig(logger_config)
 logging.debug('Logger configuration loaded.')
+
+name = 'pyservices'

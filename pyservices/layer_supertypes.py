@@ -1,13 +1,14 @@
 import inspect
 import falcon
 import requests
+import json
 
 from abc import ABC
 from wsgiref import simple_server
 from threading import Thread
 
 import pyservices as ps
-from pyservices.interfaces import RestfulResource
+from pyservices.interfaces import RestfulResource, InterfaceBase
 from pyservices.frameworks import FalconResourceGenerator
 
 
@@ -17,19 +18,37 @@ class Model(ABC):
 
 
 class Service:
-    """Base class for implementing a service
+    """ Base class for implementing a service.
     """
+
+    # TODO docs
+    base_path = None
+
     def __init__(self, config: dict = None):
-        """Initialize the service instance.
+        """ Initialize the service instance.
 
         Attributes:
             config (dict): The configuration of the service.
+            TODO
+            TODO
         """
         self.config = config
         self._interfaces = {}
+        self._interface_descriptors = self._initialize_descriptors()
+
+    def _initialize_descriptors(self):
+        """ Initialize the interface descriptors.
+
+        This is done for let the iface know which service is it related to.
+        """
+        # this returns a list of tuples
+        iface_descriptors = inspect.getmembers(
+            self, lambda m: inspect.isclass(m) and issubclass(m, InterfaceBase))
+        return [iface_desc[1](self) for iface_desc in iface_descriptors]
 
     def rest_server(self):
-        """Generates the RESTFul gateway.
+        """ Generates the RESTFul gateway.
+
         """
 
         # generate single for all the interface of all rest resources
@@ -40,15 +59,13 @@ class Service:
             port = self.config.get('port') or 7890
             address = self.config.get('address') or 'localhost'
             framework = self.config.get('framework') or 'falcon'
-            members = inspect.getmembers(self,
-                                         lambda m:
-                                         inspect.isclass(m) and issubclass(
-                                             m, RestfulResource))
+            restful_resources = [iface_d
+                                 for iface_d in self._interface_descriptors
+                                 if isinstance(iface_d, RestfulResource)]
             resources = {
-                res[1].resource_path or f'{res[1].meta_model.name.lower()}s':
-                    res[1]
-                for res in members}
-            base_path = self.__class__.base_path
+                res.resource_path or f'{res.meta_model.name.lower()}s': res
+                for res in restful_resources}
+            base_path = self.__class__.base_path  # TODO AA
             RestClient(f'http://{address}:{port}/{base_path}', resources)
             if framework == ps.frameworks.FALCON:
                 app = application = falcon.API()
@@ -68,7 +85,7 @@ class Service:
                 raise NotImplementedError
 
     def rest_client(self):
-        """Get a client proxy
+        """ Get a client proxy
 
         TODO there is only one instance of the RestClient given a resource
         """
@@ -107,6 +124,7 @@ class RestClient:
             RestClient.clients[service_path] = self
 
 
+# TODO docs
 class RestResourceEndPoint:
     """ Represent the object used to perform actual REST calls for a given
         resource.
@@ -123,6 +141,8 @@ class RestResourceEndPoint:
                                  self.meta_model)
 
     def get_detail(self, res_id):
+        res_id = json.dumps(res_id)
+
         return self.codec.decode(requests.get(f'{self.path}/{res_id}').content,
                                  self.meta_model)
 
@@ -132,10 +152,12 @@ class RestResourceEndPoint:
         return True
 
     def delete(self, res_id):
+        res_id = json.dumps(res_id)
         requests.delete(f'{self.path}/{res_id}')
         return True
 
     def update(self, res_id, resource):
+        res_id = json.dumps(res_id)
         resource = self.codec.encode(resource)
         requests.post(f'{self.path}/{res_id}', resource)
         return True
