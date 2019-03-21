@@ -1,13 +1,12 @@
 import abc
 import datetime
-import logging
 import uuid
 
 from typing import NewType, Callable, TypeVar, Sequence, Optional, Union, \
     Mapping
 
-import pyservices as ps
 from pyservices.exceptions import ModelInitException, MetaTypeException
+import pyservices as ps
 
 
 class Field(abc.ABC):
@@ -87,7 +86,8 @@ class MetaModel:
 
     def __init__(self,
                  name: str,
-                 *args: Sequence[FieldType]):
+                 *args: Sequence[FieldType],
+                 primary_key_name: str = None):
         """ Initialize the meta model.
 
         Attributes:
@@ -130,10 +130,10 @@ class MetaModel:
 
         self.name = name
         self.fields = args
+        self.primary_key_name = primary_key_name
 
         MetaModel.modelClasses[self.name] = self._generate_class()
-        logging.getLogger(ps.LOGGER_NAME).debug(f'A new meta model has been '
-                                                f'created. [{self.name}]')
+        ps.log.debug(f'A new meta model has been created. [{self.name}]')
 
     def __call__(self, name: str = None):
         """ Returns a ComposedField created from the fields of the MetaModel.
@@ -224,6 +224,26 @@ class MetaModel:
             '__new__': new
         })
 
+    def validate_id(self, res_id):
+        """This method is used to validate the res_id value used to access
+            a particular resource.
+            TODO
+            """
+        # TODO with this approach string using + will be split.
+        #  Change approach
+        primary_key_field = next(
+            filter(lambda f: f.name == self.primary_key_name, self.fields),
+            None)
+        # TODO more robust
+        if primary_key_field:
+            values = res_id.split('+')
+            # TODO perform more robust checks and support case with
+            #  not ComposedFields
+            if isinstance(primary_key_field, ComposedField):
+                if not len(primary_key_field.meta_model.fields) == len(values):
+                    raise Exception  # TODO
+            res_id = primary_key_field.meta_model.get_class()(*values)
+        return res_id
 
 class SimpleField(Field):
     """A SimpleField is Field with a static build in field_type.
@@ -351,9 +371,13 @@ class ListField(Field):
         """
         value = super().init_value(value)
         if isinstance(self.data_type, MetaModel):
-            t = self.data_type.get_class() # TODO if the uniqueness of ComposedField brake something
+            t = self.data_type.get_class() # TODO check if the uniqueness of ComposedField brake something!!
         elif issubclass(self.data_type, SimpleField):
             t = self.data_type.static_field_type
+        else:
+            raise MetaTypeException(f'The data_type must be either a '
+                                    f'SimpleField or a MetaModel instance, not '
+                                    f'a {type(self.data_type)}.')
         for el in value:
             # noinspection PyTypeHints
             if not isinstance(el, t):
