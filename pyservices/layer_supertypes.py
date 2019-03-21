@@ -56,7 +56,7 @@ class Service:
         if iface:
             return iface
         else:
-            port = self.config.get('port') or 7890
+            port = self.config.get('port') or '7890'
             address = self.config.get('address') or 'localhost'
             framework = self.config.get('framework') or 'falcon'
             restful_resources = [iface_d
@@ -66,7 +66,7 @@ class Service:
                 res.resource_path or f'{res.meta_model.name.lower()}s': res
                 for res in restful_resources}
             base_path = self.__class__.base_path  # TODO AA
-            RestClient(f'http://{address}:{port}/{base_path}', resources)
+            RestClient(f'http://{address}:{port}/{base_path}', resources)  # TODO move this?
             if framework == ps.frameworks.FALCON:
                 app = application = falcon.API()
                 falcon_resources = {uri: FalconResourceGenerator(r).generate()
@@ -76,7 +76,8 @@ class Service:
                     path = f'/{base_path}/{uri}'
                     app.add_route(path, resources[0])
                     app.add_route(path + '/{res_id}', resources[1])
-                httpd = simple_server.make_server(address, port, application)
+                httpd = simple_server.make_server(address, int(port),
+                                                  application)
                 t = Thread(target=httpd.serve_forever)
                 t.start()
                 self._interfaces[RestfulResource.interface_type_id] = (t, httpd)
@@ -141,7 +142,9 @@ class RestResourceEndPoint:
                                  self.meta_model)
 
     def get_detail(self, res_id):
-        res_id = json.dumps(res_id)
+        # TODO DEFINE A BETTER IDENTIFIER
+        if isinstance(res_id, dict):
+            res_id = "+".join(res_id.values())
 
         return self.codec.decode(requests.get(f'{self.path}/{res_id}').content,
                                  self.meta_model)

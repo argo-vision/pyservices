@@ -65,7 +65,7 @@ def instance_to_dict_repr(val: object):
 
 
 # TODO refactor
-def dict_repr_to_instance(val: Union[dict, list], meta_model: type):
+def dict_repr_to_instance(val: Union[dict, list], meta_model: MetaModel):
     """Recursively recreates an instance given the MetaModel.
 
     Attributes:
@@ -113,8 +113,12 @@ def dict_repr_to_instance(val: Union[dict, list], meta_model: type):
                 val[k] = [dict_repr_to_instance(el, t.data_type)
                           for el in val[k]]
             elif issubclass(t.data_type, SimpleField):
-                val[k] = [t.init_value(None, el)  # TODO check if this could be dangerous
-                          for el in val[k]]
+                # constrains are applied to the ListField, here I create a
+                # "permissive" temporary field used to initialize the values
+                # of SimpleFields
+                temporary_field = t.data_type('temporary_field')
+                values = [temporary_field.init_value(v) for v in val[k]]
+                val[k] = t.init_value(values)
             else:
                 raise MetaTypeException("The MetaModel is not compatible "
                                         "with the given val.")

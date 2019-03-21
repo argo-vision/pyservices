@@ -1,4 +1,3 @@
-import logging
 import pyservices as ps
 
 
@@ -7,8 +6,7 @@ class PyservicesBaseException(Exception):
     """ Base exceptions for the module.
     """
     def __init__(self, msg):
-        logging.getLogger(ps.LOGGER_NAME).exception(f'Trowing an Exception'
-                                                    f'({type(self)}) - {msg})')
+        ps.log.exception(f'Trowing an Exception({type(self)}) - {msg})')
         super().__init__(msg)
 
 

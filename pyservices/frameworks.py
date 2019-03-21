@@ -10,7 +10,7 @@ from pyservices.exceptions import InterfaceDefinitionException
 # TODO work on robustness, exceptions, etc
 
 # REST Framework
-FALCON = 'Falcon'
+FALCON = 'falcon'
 
 
 class FalconResourceGenerator:
@@ -19,7 +19,7 @@ class FalconResourceGenerator:
         """Initialize the meta model.
 
         Attributes:
-            iface (pyservices.interfaces.Restful): The inferface from which the
+            iface (pyservices.interfaces.Restful): The interface from which the
                 Falcon Resources are generated
         """
         self.meta_model = iface.meta_model
@@ -27,7 +27,7 @@ class FalconResourceGenerator:
 
         methods = {name_method[0]: name_method[1]
                    for name_method in inspect.getmembers(
-            iface, lambda m: inspect.isfunction(m))}
+            iface, lambda m: inspect.ismethod(m))}
         self.collection = methods.get('collection')
         self.add = methods.get('add')
         self.detail = methods.get('detail')
@@ -43,13 +43,13 @@ class FalconResourceGenerator:
             else:
                 resp.status = falcon.HTTP_404
         except Exception:
-            raise InterfaceDefinitionException
+            raise InterfaceDefinitionException(
+                'Error creating the restful interface')
 
     def _collection_put(self, req, resp):
         resp.http_content_type = self.codec.http_content_type
 
         try:
-
             if self.add:
                 resource = self.codec.decode(
                     req.stream.read(),
@@ -59,11 +59,14 @@ class FalconResourceGenerator:
             else:
                 resp.status = falcon.HTTP_404
         except Exception:
-            raise InterfaceDefinitionException
+            raise InterfaceDefinitionException(
+                'Error creating the restful interface')
 
     def _resource_get(self, req, resp, res_id):
         resp.http_content_type = self.codec.http_content_type
-        res_id = json.loads(res_id)  # TODO check requests, not nice
+        res_id = self._validate_res_id(res_id)
+        if not res_id:
+            raise Exception  # TODO
 
         try:
             if self.detail:
@@ -72,11 +75,14 @@ class FalconResourceGenerator:
             else:
                 resp.status = falcon.HTTP_404
         except Exception:
-            raise InterfaceDefinitionException
+            raise InterfaceDefinitionException(
+                'Error creating the restful interface')
 
     def _resource_post(self, req, resp, res_id):
         resp.http_content_type = self.codec.http_content_type
-        res_id = json.loads(res_id)  # TODO check requests, not nice
+        res_id = self._validate_res_id(res_id)
+        if not res_id:
+            raise Exception  # TODO
 
         try:
             if self.update:
@@ -87,11 +93,14 @@ class FalconResourceGenerator:
             else:
                 resp.status = falcon.HTTP_404
         except Exception:
-            raise InterfaceDefinitionException
+            raise InterfaceDefinitionException(
+                'Error creating the restful interface')
 
     def _resource_delete(self, req, resp, res_id):
         resp.http_content_type = self.codec.http_content_type
-        res_id = json.loads(res_id)  # TODO check requests, not nice
+        res_id = self._validate_res_id(res_id)
+        if not res_id:
+            raise Exception  # TODO
 
         try:
             if self.delete:
@@ -99,7 +108,11 @@ class FalconResourceGenerator:
             else:
                 resp.status = falcon.HTTP_404
         except Exception:
-            raise InterfaceDefinitionException
+            raise InterfaceDefinitionException(
+                'Error creating the restful interface')
+
+    def _validate_res_id(self, res_id):
+        return self.meta_model.validate_id(res_id)
 
     def generate(self):
         return (

@@ -3,7 +3,6 @@ import requests
 import pyservices as ps
 
 from pyservices.layer_supertypes import Service
-from pyservices.interfaces import RestfulResource
 from pyservices.data_descriptors import MetaModel, StringField
 
 
@@ -46,25 +45,20 @@ class TestRestServer(unittest.TestCase):
                 codec = ps.JSON  # useless
 
                 # TODO static method?
-                @staticmethod
-                def collection():
+                def collection(self):
                     return accounts
 
-                @staticmethod
-                def detail(res_id):
+                def detail(self, res_id):
                     return accounts[int(res_id)]
 
-                @staticmethod
-                def add(account):
+                def add(self, account):
                     accounts.append(account)
 
-                @staticmethod
-                def update(res_id, account):
+                def update(self, res_id, account):
                     del accounts[int(res_id)]
                     accounts.append(account)
 
-                @staticmethod
-                def delete(res_id):
+                def delete(self, res_id):
                     del accounts[int(res_id)]
 
         self.AccountManager = AccountManager
