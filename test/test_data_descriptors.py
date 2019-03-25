@@ -218,3 +218,6 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertIsInstance(user_instance, user_class)
         self.assertIsInstance(user_instance.credentials, credential_class)
 
+
+if __name__ == '__main__':
+    unittest.main()

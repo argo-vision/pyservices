@@ -4,6 +4,7 @@ import pyservices as ps
 
 from pyservices.layer_supertypes import Service
 from pyservices.data_descriptors import MetaModel, StringField
+from pyservices.generators import RestGenerator
 
 
 # TODO refactor
@@ -31,15 +32,14 @@ class TestRestServer(unittest.TestCase):
             NoteMM.get_class()('FirstTitle', 'Content1234')]
 
         class AccountManager(Service):
-            base_path = 'account-manager'
 
-            class Note(ps.interfaces.RestfulResource):
+            class Note(ps.interfaces.RestResource):
                 meta_model = NoteMM
 
                 def collection(self):
                     return self.notes
 
-            class Account(ps.interfaces.RestfulResource):
+            class Account(ps.interfaces.RestResource):
                 meta_model = AccountMM
                 resource_path = 'accounts'  # useless
                 codec = ps.JSON  # useless
@@ -63,14 +63,16 @@ class TestRestServer(unittest.TestCase):
 
         self.AccountManager = AccountManager
         account_manager_service = self.AccountManager({
+                    'address': 'localhost',
                     'port': 7890,
-                    'framework': ps.frameworks.FALCON})
+                    'framework': ps.frameworks.FALCON,
+                    'service_base_path': 'account-manager'})
+        RestGenerator._servers = {}
         try:
-            # TODO rest service the same
-            self.thread, self.httpd = account_manager_service.rest_server()
-
-            # TODO check stato opp no
-            self.client_proxy = account_manager_service.rest_client()
+            self.thread, self.httpd = RestGenerator.rest_server(
+                account_manager_service)
+            self.client_proxy = RestGenerator.get_client_proxy(
+                account_manager_service)
         except Exception as e:
             self.fail(e)
 
