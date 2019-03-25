@@ -10,7 +10,7 @@ class InterfaceBase(abc.ABC):
 
 
 # TODO class method approach?
-class RestfulResource(InterfaceBase):
+class RestResource(InterfaceBase):
     """Restful interface of a single Resource.
 
     """
@@ -28,3 +28,8 @@ class RestfulResource(InterfaceBase):
     def update(self, res_id, resource): pass
 
     def delete(self, res_id): pass
+
+
+class MessageInterface(InterfaceBase):
+    # TODO
+    pass

@@ -7,10 +7,10 @@ from typing import Union
 from . import http_content_types
 from .data_descriptors import MetaModel, ListField, ComposedField, \
     ConditionalField, DictField, SimpleField
-from .layer_supertypes import Model
 from pyservices.exceptions import MetaTypeException
 
 
+# TODO docs
 def get(inst, memb):
     """Given an instance and a member name, returns it.
 
@@ -137,7 +137,7 @@ class Codec(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def encode(cls, value: Model):
+    def encode(cls, value):
         """Given a model object, returns its string
         representation in the http_content_type.
 
@@ -170,7 +170,7 @@ class JSON(Codec):
     http_content_type = http_content_types.APPLICATION_JSON
 
     @classmethod
-    def encode(cls, value: Model):
+    def encode(cls, value):
         return json.dumps(instance_to_dict_repr(value), default=str)
 
     @classmethod

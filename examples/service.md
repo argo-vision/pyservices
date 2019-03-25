@@ -5,7 +5,7 @@
         class AccountManager(pyservices.layer_supertypes.Service):
             base_path = 'account-manager'
 
-            class User(pyservices.interfaces.RestfulResource):
+            class User(pyservices.interfaces.RestResource):
                 meta_model = user_meta_model
 
                 @staticmethod
@@ -14,7 +14,7 @@
                     users = some_ways()
                     return users 
 
-            class Account(pyservices.interfaces.RestfulResource):
+            class Account(pyservices.interfaces.RestResource):
                 meta_model = account_meta_model
                 resource_path = 'accounts'                  # default behaviour
                 codec = pyservices.entity_codecs.JSON       # default behaviour

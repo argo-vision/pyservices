@@ -4,10 +4,12 @@ import json
 
 from pyservices import entity_codecs
 from pyservices.exceptions import InterfaceDefinitionException
+from pyservices.data_descriptors import ComposedField
 
 
 # TODO refactor
 # TODO work on robustness, exceptions, etc
+# TODO rename collection_ and resource_
 
 # REST Framework
 FALCON = 'falcon'
@@ -62,9 +64,9 @@ class FalconResourceGenerator:
             raise InterfaceDefinitionException(
                 'Error creating the restful interface')
 
-    def _resource_get(self, req, resp, res_id):
+    def _resource_get(self, req, resp, **kwargs):
         resp.http_content_type = self.codec.http_content_type
-        res_id = self._validate_res_id(res_id)
+        res_id = self._validate_res_id(**kwargs)
         if not res_id:
             raise Exception  # TODO
 
@@ -78,9 +80,9 @@ class FalconResourceGenerator:
             raise InterfaceDefinitionException(
                 'Error creating the restful interface')
 
-    def _resource_post(self, req, resp, res_id):
+    def _resource_post(self, req, resp, **kwargs):
         resp.http_content_type = self.codec.http_content_type
-        res_id = self._validate_res_id(res_id)
+        res_id = self._validate_res_id(**kwargs)
         if not res_id:
             raise Exception  # TODO
 
@@ -96,9 +98,9 @@ class FalconResourceGenerator:
             raise InterfaceDefinitionException(
                 'Error creating the restful interface')
 
-    def _resource_delete(self, req, resp, res_id):
+    def _resource_delete(self, req, resp, **kwargs):
         resp.http_content_type = self.codec.http_content_type
-        res_id = self._validate_res_id(res_id)
+        res_id = self._validate_res_id(**kwargs)
         if not res_id:
             raise Exception  # TODO
 
@@ -111,17 +113,19 @@ class FalconResourceGenerator:
             raise InterfaceDefinitionException(
                 'Error creating the restful interface')
 
-    def _validate_res_id(self, res_id):
-        return self.meta_model.validate_id(res_id)
+    def _validate_res_id(self, **kwargs):
+        return self.meta_model.validate_id(**kwargs)
 
     def generate(self):
         return (
             type(f'{FALCON}{self.meta_model.name}s', (object,), {
                 'on_get': self._collection_get,
-                'on_put': self._collection_put
-            }),
+                'on_put': self._collection_put}),
             type(f'{FALCON}{self.meta_model.name}', (object,), {
                 'on_get': self._resource_get,
                 'on_post': self._resource_post,
                 'on_delete': self._resource_delete,
-            }))
+                'id_dimension': len(
+                    self.meta_model.primary_key_field.meta_model.fields)
+                if isinstance(self.meta_model.primary_key_field, ComposedField)
+                else 1}))

@@ -1,7 +1,7 @@
 import pyservices as ps
 
 @ps.model(id_field = None)
-class Note(ps.Model):
+class Note():
     def __init__(self, title, content):
         self.title = title
         self.content = content

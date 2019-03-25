@@ -15,13 +15,13 @@ class Field(abc.ABC):
     Class attributes:
         T (typing.TypeVar): The generic param used in the field_type.
     """
-    T = TypeVar('T')
+    _T = TypeVar('T')
 
     @abc.abstractmethod
     def __init__(self,
                  name: str,
-                 field_type: T,
-                 default: Union[T, Callable[..., T], None] = None,
+                 field_type: _T,
+                 default: Union[_T, Callable[..., _T], None] = None,
                  optional: Optional[bool] = False) -> None:
         """ Initialize the field.
 
@@ -29,8 +29,8 @@ class Field(abc.ABC):
             name (str): The name of the field. The first letter of the name must
                 be in lowercase. The capitalized name may indicate the
                 field_type of the field.
-            field_type (T): The type of the related field.
-            default (Union(T, Callable[...,T], None)): Could be either a
+            field_type (_T): The type of the related field.
+            default (Union(_T, Callable[...,_T], None)): Could be either a
                 field_type object or a callable object returning a field_type
                 object. Defaults to None.
             optional (Optional(bool): A boolean indicating either the field will
@@ -60,7 +60,7 @@ class Field(abc.ABC):
             value: The value used to initialize the model.
 
         Returns:
-            T: The value of a correct type.
+            _T: The value of a correct type.
 
         Raises:
             ModelInitException:
@@ -80,20 +80,22 @@ class MetaModel:
     Class attributes:
         FieldType (type): The type of Field.
         modelClasses (dict): A static dict used to store the generated classes.
+        primary_key_name (str): Indicated the name of the field which will be
+            the primary key for the 
     """
-    FieldType = NewType('FieldType', Field)
+    _FieldType = NewType('FieldType', Field)
     modelClasses = dict()
 
     def __init__(self,
                  name: str,
-                 *args: Sequence[FieldType],
+                 *args: Sequence[_FieldType],
                  primary_key_name: str = None):
         """ Initialize the meta model.
 
         Attributes:
             name (str): The name of the class which will be generated. It also
                 define will be a key on the modelClasses.
-            fields (Sequence[FieldType]): The fields used to generate the class
+            fields (Sequence[_FieldType]): The fields used to generate the class
                 with _generate_class method.
 
         Raises:
@@ -130,7 +132,10 @@ class MetaModel:
 
         self.name = name
         self.fields = args
-        self.primary_key_name = primary_key_name
+        # TODO
+        self.primary_key_field = next(filter(
+            lambda f: f.name == primary_key_name, args),
+            StringField('_id'))
 
         MetaModel.modelClasses[self.name] = self._generate_class()
         ps.log.debug(f'A new meta model has been created. [{self.name}]')
@@ -205,7 +210,6 @@ class MetaModel:
                             f'The field named "{field.name}"'
                             f'is not optional.')
                 else:
-                    # TODO ensure ConditionalField are the last evaluated values (should be fixed)
                     # In this case, the initialization depends on a condition
                     if isinstance(field, ConditionalField):
                         value = (
@@ -224,26 +228,30 @@ class MetaModel:
             '__new__': new
         })
 
-    def validate_id(self, res_id):
+    # TODO docs...
+    # TODO refactor. It it legal to have MMs without primary key
+    def validate_id(self, **kwargs):
         """This method is used to validate the res_id value used to access
             a particular resource.
             TODO
             """
-        # TODO with this approach string using + will be split.
-        #  Change approach
-        primary_key_field = next(
-            filter(lambda f: f.name == self.primary_key_name, self.fields),
-            None)
         # TODO more robust
-        if primary_key_field:
-            values = res_id.split('+')
+        pkf = self.primary_key_field
+        kwargs_len = len(kwargs.items())
+        if pkf:
             # TODO perform more robust checks and support case with
             #  not ComposedFields
-            if isinstance(primary_key_field, ComposedField):
-                if not len(primary_key_field.meta_model.fields) == len(values):
-                    raise Exception  # TODO
-            res_id = primary_key_field.meta_model.get_class()(*values)
+            if isinstance(pkf, ComposedField) and\
+                    len(pkf.meta_model.fields) == kwargs_len:
+                res_id = pkf.meta_model.get_class()(*kwargs.values())
+            elif isinstance(pkf, SimpleField) and kwargs_len == 1:
+                res_id = list(kwargs.values())[0]
+            else:
+                raise Exception  # TODO
+        else:
+            res_id = list(kwargs.values())[0]  # TODO !! not dry
         return res_id
+
 
 class SimpleField(Field):
     """A SimpleField is Field with a static build in field_type.
@@ -316,13 +324,13 @@ class ComposedField(Field):
 
     def __init__(self,
                  name: str,
-                 *args: Sequence[MetaModel.FieldType],
+                 *args: Sequence[Field],
                  optional: Optional[bool] = False,
                  meta_model: MetaModel = None) -> None:
         """ Initialize the ComposedField.
 
         Attributes:
-            *args (Sequence[MetaModel.FieldType]): The fields which compose the
+            *args (Sequence[MetaModel._FieldType]): The fields which compose the
                 ComposedField
             meta_model (type): The related MetaModel. If passed, the composed
                 field is generated from an existing MetaModel. If not, a
@@ -371,7 +379,7 @@ class ListField(Field):
         """
         value = super().init_value(value)
         if isinstance(self.data_type, MetaModel):
-            t = self.data_type.get_class() # TODO check if the uniqueness of ComposedField brake something!!
+            t = self.data_type.get_class()
         elif issubclass(self.data_type, SimpleField):
             t = self.data_type.static_field_type
         else:
@@ -403,7 +411,7 @@ class ConditionalField(Field):
                  optional: Optional[bool] = False) -> None:
         """ Initialize the ConditionalField.
 
-        The field_type is set to None and it will be dinamically evaluated when
+        The field_type is set to None and it will be dynamically evaluated when
             a new model is initialized.
 
         Attributes:
