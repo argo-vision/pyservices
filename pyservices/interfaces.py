@@ -6,10 +6,9 @@ class InterfaceBase(abc.ABC):
     interface_type_id = None
 
     def __init__(self, service):
-        self._service = service
+        self.service = service
 
 
-# TODO class method approach?
 class RestResource(InterfaceBase):
     """Restful interface of a single Resource.
 
@@ -19,9 +18,9 @@ class RestResource(InterfaceBase):
     resource_path = None
     codec = None
 
-    def collection(self): pass
+    def collect(self): pass
 
-    def detail(self, res_id): pass
+    def get_detail(self, res_id): pass
 
     def add(self, resource): pass
 

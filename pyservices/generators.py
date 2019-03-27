@@ -52,7 +52,7 @@ class RestResourceEndPoint:
         self.codec = res.codec
         self.meta_model = res.meta_model
 
-    def get_collection(self):
+    def collect(self):
         return self.codec.decode(requests.get(self.path).content,
                                  self.meta_model)
 
@@ -110,7 +110,7 @@ class RestGenerator:
         return client
 
     @classmethod
-    def rest_server(cls, service: Service):
+    def generate_rest_server(cls, service: Service):
         """ Generates the RESTFul gateway.
 
         """
@@ -120,7 +120,7 @@ class RestGenerator:
             raise Exception  # TODO
         else:
             base_path = config.get('service_base_path')
-            framework = config.get('framework')
+            framework = config.get('framework') or 'falcon'  # TODO handle default elsewhere
             resources = service.get_rest_resources()
             if framework == FALCON:
                 app = application = falcon.API()

@@ -31,3 +31,9 @@ Thumbs.db
 **/_configuration.py
 service/**/config.py
 config.py
+
+# pip package
+build/**
+dist/**
+pyservices.egg-info/**
+

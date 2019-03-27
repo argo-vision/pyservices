@@ -36,19 +36,18 @@ class TestRestServer(unittest.TestCase):
             class Note(ps.interfaces.RestResource):
                 meta_model = NoteMM
 
-                def collection(self):
+                def collect(self):
                     return self.notes
 
             class Account(ps.interfaces.RestResource):
                 meta_model = AccountMM
-                resource_path = 'accounts'  # useless
-                codec = ps.JSON  # useless
+                resource_path = 'accounts'  # default
+                codec = ps.JSON  # default
 
-                # TODO static method?
-                def collection(self):
+                def collect(self):
                     return accounts
 
-                def detail(self, res_id):
+                def get_detail(self, res_id):
                     return accounts[int(res_id)]
 
                 def add(self, account):
@@ -69,7 +68,7 @@ class TestRestServer(unittest.TestCase):
                     'service_base_path': 'account-manager'})
         RestGenerator._servers = {}
         try:
-            self.thread, self.httpd = RestGenerator.rest_server(
+            self.thread, self.httpd = RestGenerator.generate_rest_server(
                 account_manager_service)
             self.client_proxy = RestGenerator.get_client_proxy(
                 account_manager_service)
@@ -117,7 +116,7 @@ class TestRestServer(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
 
     def testClientGetCollection(self):
-        coll = self.client_proxy.interfaces['accounts'].get_collection()
+        coll = self.client_proxy.interfaces['accounts'].collect()
         for el in coll:
             self.assertTrue(isinstance(el, self.account_mm.get_class()))
 

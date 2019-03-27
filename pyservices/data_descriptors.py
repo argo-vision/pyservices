@@ -88,7 +88,7 @@ class MetaModel:
 
     def __init__(self,
                  name: str,
-                 *args: Sequence[_FieldType],
+                 *args: _FieldType,
                  primary_key_name: str = None):
         """ Initialize the meta model.
 
