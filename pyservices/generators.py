@@ -56,7 +56,7 @@ class RestResourceEndPoint:
         return self.codec.decode(requests.get(self.path).content,
                                  self.meta_model)
 
-    def get_detail(self, res_id):
+    def detail(self, res_id):
         if isinstance(res_id, dict):
             res_id = "/".join(res_id.values())
         return self.codec.decode(requests.get(f'{self.path}/{res_id}').content,

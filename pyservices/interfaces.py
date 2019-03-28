@@ -20,7 +20,7 @@ class RestResource(InterfaceBase):
 
     def collect(self): pass
 
-    def get_detail(self, res_id): pass
+    def detail(self, res_id): pass
 
     def add(self, resource): pass
 

@@ -32,7 +32,7 @@ class FalconResourceGenerator:
             iface, lambda m: inspect.ismethod(m))}
         self.collection = methods.get('collect')
         self.add = methods.get('add')
-        self.detail = methods.get('get_detail')
+        self.detail = methods.get('detail')
         self.update = methods.get('update')
         self.delete = methods.get('delete')
 

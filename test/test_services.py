@@ -47,7 +47,7 @@ class TestRestServer(unittest.TestCase):
                 def collect(self):
                     return accounts
 
-                def get_detail(self, res_id):
+                def detail(self, res_id):
                     return accounts[int(res_id)]
 
                 def add(self, account):
@@ -121,7 +121,7 @@ class TestRestServer(unittest.TestCase):
             self.assertTrue(isinstance(el, self.account_mm.get_class()))
 
     def testClientGetDetail(self):
-        detail = self.client_proxy.interfaces['accounts'].get_detail(1)
+        detail = self.client_proxy.interfaces['accounts'].detail(1)
         self.assertTrue(isinstance(detail, self.account_mm.get_class()))
 
     def testClientAdd(self):

@@ -20,7 +20,8 @@ class TestDataDescriptor(unittest.TestCase):
             'Note',
             self.title_field,
             self.content_field,
-            self.date_time_field)
+            self.date_time_field,
+            identifiable=False)
         self.Note = self.note_desc.get_class()
 
     def testField(self):

@@ -15,7 +15,7 @@ class Field(abc.ABC):
     Class attributes:
         T (typing.TypeVar): The generic param used in the field_type.
     """
-    _T = TypeVar('T')
+    _T = TypeVar('_T')
 
     @abc.abstractmethod
     def __init__(self,
@@ -30,10 +30,10 @@ class Field(abc.ABC):
                 be in lowercase. The capitalized name may indicate the
                 field_type of the field.
             field_type (_T): The type of the related field.
-            default (Union(_T, Callable[...,_T], None)): Could be either a
+            default (Union[_T, Callable[...,_T], None]): Could be either a
                 field_type object or a callable object returning a field_type
                 object. Defaults to None.
-            optional (Optional(bool): A boolean indicating either the field will
+            optional (Optional[bool]): A boolean indicating either the field will
                 require a value(False) or don't(True). Defaults to None.
 
         Raises:
@@ -78,18 +78,17 @@ class MetaModel:
     """ A class which represents the description of the model.
 
     Class attributes:
-        FieldType (type): The type of Field.
+        _FieldType (type): The type of Field.
         modelClasses (dict): A static dict used to store the generated classes.
-        primary_key_name (str): Indicated the name of the field which will be
-            the primary key for the 
     """
-    _FieldType = NewType('FieldType', Field)
+    _FieldType = NewType('_FieldType', Field)
     modelClasses = dict()
 
     def __init__(self,
                  name: str,
                  *args: _FieldType,
-                 primary_key_name: str = None):
+                 primary_key_name: Optional[str] = None,
+                 identifiable: Optional[bool] = True):
         """ Initialize the meta model.
 
         Attributes:
@@ -97,6 +96,12 @@ class MetaModel:
                 define will be a key on the modelClasses.
             fields (Sequence[_FieldType]): The fields used to generate the class
                 with _generate_class method.
+            primary_key_name (Optional[str]): The name of the field which will
+                be the used as primary key for the model.
+            identifiable (Optional[bool]): True if the described model must be
+                identified. If set to True while a primary_key_name is not
+                provided, an _id field will be used or created. It must be true
+                while we need to access to a particular element (e.g. CRUD ops).
 
         Raises:
             ValueError:
@@ -117,10 +122,8 @@ class MetaModel:
         if not isinstance(name, str):
             raise TypeError(
                 'The first argument must be the name of the composed field.')
-
         if str.islower(name[0]):
             raise ValueError('The case of the name must be uppercase')
-
         for arg in args:
             if not isinstance(arg, Field):
                 raise MetaTypeException(
@@ -129,13 +132,28 @@ class MetaModel:
         title_set = {field.name for field in args}
         if len(title_set) < len(args):
             raise ValueError('Fields must have unique name')
-
+        if primary_key_name:
+            if not identifiable:
+                raise ModelInitException(f'If a primary key name is provided, '
+                                         f'the MetaModel must be identifiable')
+            if primary_key_name not in title_set:
+                raise ValueError('There are no fields with the title '
+                                 'corresponding to the primary_key_name '
+                                 f'({primary_key_name}).')
         self.name = name
         self.fields = args
-        # TODO
-        self.primary_key_field = next(filter(
-            lambda f: f.name == primary_key_name, args),
-            StringField('_id'))
+        self.identifiable = identifiable
+        if identifiable:
+            primary_key_name = primary_key_name or '_id'
+            primary_key_field = next(filter(
+                lambda f: f.name == primary_key_name, args),
+                StringField('_id', optional=True))
+            if not isinstance(primary_key_field, (ComposedField, SimpleField)):
+                raise ModelInitException(f'The primary key must refer to '
+                                         f'either a SimpleField or a '
+                                         f'ComposedField')
+            self.fields = self.fields + (primary_key_field,)
+            self.primary_key_field = primary_key_field
 
         MetaModel.modelClasses[self.name] = self._generate_class()
         ps.log.debug(f'A new meta model has been created. [{self.name}]')
@@ -198,7 +216,7 @@ class MetaModel:
                             value = field.default()
                         else:
                             value = field.default
-                        if not isinstance(value, field.field_type):
+                        if not isinstance(value, field.field_type):  # TODO
                             raise ModelInitException(
                                 f'The default value has a bad type '
                                 f'{type(value)}.Expected '
@@ -228,26 +246,32 @@ class MetaModel:
             '__new__': new
         })
 
-    # TODO docs...
-    # TODO refactor. It it legal to have MMs without primary key
-    def validate_id(self, **kwargs):
-        """This method is used to validate the res_id value used to access
-            a particular resource.
-            TODO
-            """
-        # TODO more robust
-        pkf = self.primary_key_field
-        kwargs_len = len(kwargs.items())
-        if pkf:
-            # TODO perform more robust checks and support case with
-            #  not ComposedFields
+    def validate_id(self, **kwargs: dict):
+        """ This method is used to validate value which identifies the model
+                through the primary key.
+
+        Attributes:
+            kwargs (dict): If the keys are more than 1. They must match the name
+                of the fields of the primary key. Values must match the types.
+
+        Returns:
+            It could be:
+                - An instance of the related MetaModel if the primary_key
+                    field is a ComposedField.
+                - The value of the dict if the primary_key_field is a
+                    SimpleField.
+        """
+        if self.identifiable:
+            pkf = self.primary_key_field
+            kwargs_len = len(kwargs.items())
             if isinstance(pkf, ComposedField) and\
                     len(pkf.meta_model.fields) == kwargs_len:
                 res_id = pkf.meta_model.get_class()(*kwargs.values())
             elif isinstance(pkf, SimpleField) and kwargs_len == 1:
                 res_id = list(kwargs.values())[0]
             else:
-                raise Exception  # TODO
+                raise ModelInitException('The primary key is not compatible.'
+                                         f'{pkf}')
         else:
             res_id = list(kwargs.values())[0]  # TODO !! not dry
         return res_id
