@@ -6,6 +6,7 @@ from wsgiref import simple_server
 from threading import Thread
 from typing import Union
 
+import pyservices as ps
 from pyservices.frameworks import FalconResourceGenerator, FALCON
 from pyservices.layer_supertypes import Service
 
@@ -120,6 +121,8 @@ class RestGenerator:
             raise Exception  # TODO
         else:
             base_path = config.get('service_base_path')
+            address = config.get('address')
+            port = int(config.get('port'))
             framework = config.get('framework') or 'falcon'  # TODO handle default elsewhere
             resources = service.get_rest_resources()
             if framework == FALCON:
@@ -137,9 +140,10 @@ class RestGenerator:
                     app.add_route(f'{path}/{res_path}', resources[1])
 
                 # TODO simple_server is temporary
-                httpd = simple_server.make_server(config.get('address'),
-                                                  int(config.get('port')),
-                                                  application)
+                httpd = simple_server.make_server(address, port,application,
+                                                  handler_class=Handler)
+                ps.log.info(f'Serving {base_path} on {address} port {port}')
+
                 t = Thread(target=httpd.serve_forever)
                 t.start()
                 # TODO is useful to cache this?
@@ -147,3 +151,15 @@ class RestGenerator:
                 return t, httpd
             else:
                 raise NotImplementedError
+
+
+# TODO simple_server is temporary
+class Handler(simple_server.WSGIRequestHandler):
+    """ Wraps the default handler to avoid stderr logs
+    """
+
+    def log_message(self, *arg, **kwargs):
+        ps.log.info("received {}: result {}".format(*arg[1:3]))
+
+    def get_stderr(self, *arg, **kwargs):
+        pass
