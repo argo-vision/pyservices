@@ -63,7 +63,7 @@ class TestRestServer(unittest.TestCase):
         self.AccountManager = AccountManager
         account_manager_service = self.AccountManager({
                     'address': 'localhost',
-                    'port': 7890,
+                    'port': '7890',
                     'framework': ps.frameworks.FALCON,
                     'service_base_path': 'account-manager'})
         RestGenerator._servers = {}
@@ -71,7 +71,7 @@ class TestRestServer(unittest.TestCase):
             self.thread, self.httpd = RestGenerator.generate_rest_server(
                 account_manager_service)
             self.client_proxy = RestGenerator.get_client_proxy(
-                account_manager_service)
+                'localhost', '7890', 'account-manager', AccountManager)
         except Exception as e:
             self.fail(e)
 

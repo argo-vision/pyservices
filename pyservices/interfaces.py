@@ -1,5 +1,7 @@
 import abc
 
+from pyservices import JSON
+
 
 class InterfaceBase(abc.ABC):
     # TODO docs
@@ -16,7 +18,7 @@ class RestResource(InterfaceBase):
     interface_type_id = 'RESTFUL'  # TODO is it really necessary?
     meta_model = None
     resource_path = None
-    codec = None
+    codec = JSON
 
     def collect(self): pass
 
@@ -27,6 +29,10 @@ class RestResource(InterfaceBase):
     def update(self, res_id, resource): pass
 
     def delete(self, res_id): pass
+
+    @classmethod
+    def get_resource_name(cls):
+        return cls.resource_path or f'{cls.meta_model.name.lower()}s'
 
 
 class MessageInterface(InterfaceBase):

@@ -4,11 +4,12 @@ import hashlib
 
 from wsgiref import simple_server
 from threading import Thread
-from typing import Union
 
 import pyservices as ps
 from pyservices.frameworks import FalconResourceGenerator, FALCON
 from pyservices.layer_supertypes import Service
+from pyservices.entity_codecs import Codec, JSON
+from pyservices.interfaces import RestResource
 
 
 # TODO docs
@@ -16,29 +17,27 @@ class RestClient:
     """ Generate a client proxy.
 
     It generated when the rest server is initialized.
-
+    TODO
     Class attributes:
         clients (dict): Contains the client of different services, the key
             are the URI of the resource.
     """
-    clients = {}
 
-    def __init__(self, service: Service):
+    def __init__(self, service_path: str, service_class, codec: Codec):
         """ Initialize a REST client proxy.
         TODO: interfaces used to access
         Arguments:
              TODO
         """
         # TODO save config ??
-        service_path = service.get_service_path()
-        resources = service.get_rest_resources()
+        service_path = service_path
+        resources = service_class.get_rest_resources_meta_models()
         self.interfaces = {}
         self.resources_names = []
-        for uri, res in resources.items():
-            self.resources_names.append(uri)
-            self.interfaces[uri] = RestResourceEndPoint(
-                f'{service_path}/{uri}', res)
-            RestClient.clients[service_path] = self
+        for n, mm in resources.items():
+            self.resources_names.append(n)
+            self.interfaces[n] = RestResourceEndPoint(
+                f'{service_path}/{n}', mm, codec)
 
 
 # TODO docs
@@ -47,11 +46,11 @@ class RestResourceEndPoint:
         resource.
 
     """
-    def __init__(self, path, res):
+    def __init__(self, path, meta_model, codec):
         """ Initialize the end point"""
         self.path = path
-        self.codec = res.codec
-        self.meta_model = res.meta_model
+        self.codec = codec
+        self.meta_model = meta_model
 
     def collect(self):
         return self.codec.decode(requests.get(self.path).content,
@@ -85,29 +84,21 @@ class RestResourceEndPoint:
 # TODO be more generic, abstract for other type of interfaces
 # TODO docs
 class RestGenerator:
-    _clients = dict()
     _servers = dict()
 
     @classmethod
     def config_identifier(cls, config):
-        # TODO
+        # TODO #CS
         return hashlib.md5(str(sorted(config.items())).encode()).digest()
 
-    # TODO design pattern...
+    # TODO --> it's just a simple wrapper around RestClient
     @classmethod
-    def get_client_proxy(cls, service_repr: Union[dict, Service]):
-        if isinstance(service_repr, Service):
-            config = service_repr.config
-            service = service_repr
-        elif isinstance(service_repr, dict):
-            config = service_repr
-            service = Service(service_repr)
-        else:
-            raise Exception  # TODO
-        client = cls._clients.get(cls.config_identifier(config))
-        if not client:
-            client = RestClient(service)
-            cls._clients[cls.config_identifier(config)] = client
+    def get_client_proxy(cls, service_address: str, service_port: str,
+                         service_base_path: str, service_class,
+                         codec: Codec = JSON):
+        service_path = f'http://{service_address}:{service_port}/' \
+            f'{service_base_path}'
+        client = RestClient(service_path, service_class, codec)
         return client
 
     @classmethod
@@ -116,7 +107,7 @@ class RestGenerator:
 
         """
         config = service.config
-        server = cls._servers.get(cls.config_identifier(config))
+        server = cls._servers.get(cls.config_identifier(config))  # TODO CS
         if server:
             raise Exception  # TODO
         else:
@@ -124,7 +115,11 @@ class RestGenerator:
             address = config.get('address')
             port = int(config.get('port'))
             framework = config.get('framework') or 'falcon'  # TODO handle default elsewhere
-            resources = service.get_rest_resources()
+            rest_resources = [iface_desc
+                              for iface_desc in service.interface_descriptors
+                              if isinstance(iface_desc, RestResource)]
+            resources = {res.get_resource_name(): res for res in rest_resources}
+
             if framework == FALCON:
                 app = application = falcon.API()
                 falcon_resources = {
@@ -146,7 +141,7 @@ class RestGenerator:
 
                 t = Thread(target=httpd.serve_forever)
                 t.start()
-                # TODO is useful to cache this?
+                # TODO is useful to cache this? #CS
                 cls._servers[cls.config_identifier(config)] = (t, httpd)
                 return t, httpd
             else:

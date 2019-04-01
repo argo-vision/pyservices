@@ -5,10 +5,10 @@ from pyservices.db_connectors import DBConnector
 
 
 # TODO docs
-# TODO context pattern!!?
+# TODO
 class ServiceContext:
 
-    # TODO dependencies, injector pattern??
+    # TODO
     def __init__(self, db_connector: DBConnector = None,
                  # dependencies: Mapping[str, Service] = None
                  ):
@@ -45,12 +45,12 @@ class Service:
             self, lambda m: inspect.isclass(m) and issubclass(m, InterfaceBase))
         return [iface_desc[1](self) for iface_desc in iface_descriptors]
 
-    def get_rest_resources(self):
-        rest_resources = [iface_desc
-                          for iface_desc in self.interface_descriptors
-                          if isinstance(iface_desc, RestResource)]
-        return {res.resource_path or f'{res.meta_model.name.lower()}s': res
-                for res in rest_resources}
+    @classmethod
+    def get_rest_resources_meta_models(cls):
+        # TODO docs
+        resources = [m[1] for m in inspect.getmembers(
+            cls, lambda m: inspect.isclass(m) and issubclass(m, RestResource))]
+        return {res.get_resource_name(): res.meta_model for res in resources}
 
     def get_service_path(self):
         # TODO put default behaviour elsewhere #configurations
