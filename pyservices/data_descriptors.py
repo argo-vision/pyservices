@@ -211,7 +211,7 @@ class MetaModel:
             for field in ordered_fields:
                 value = field_values.get(field.name)
                 if not value:
-                    if field.default:
+                    if field.default is not None:
                         if callable(field.default):
                             value = field.default()
                         else:
@@ -381,6 +381,7 @@ class ListField(Field):
     def __init__(self,
                  name: str,
                  data_type: Union[SimpleField.__class__, MetaModel],
+                 default: Union[list, Callable[..., list], None] = None,
                  optional: Optional[bool] = False) -> None:
         """ Initialize the ListField
         Attributes:
@@ -394,7 +395,7 @@ class ListField(Field):
             raise MetaTypeException(f'The data_type must be either a '
                                     f'SimpleField or a MetaModel instance, not '
                                     f'a {type(data_type)}.')
-        super().__init__(name, list, None, optional)
+        super().__init__(name, list, default, optional)
 
     def init_value(self, value):
         """ Return the value of a correct type.
