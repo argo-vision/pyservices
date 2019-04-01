@@ -51,7 +51,9 @@ class TestRestServer(unittest.TestCase):
                     return accounts[int(res_id)]
 
                 def add(self, account):
+                    id = '123'
                     accounts.append(account)
+                    return id
 
                 def update(self, res_id, account):
                     del accounts[int(res_id)]
@@ -125,8 +127,8 @@ class TestRestServer(unittest.TestCase):
         self.assertTrue(isinstance(detail, self.account_mm.get_class()))
 
     def testClientAdd(self):
-        ret = self.client_proxy.interfaces['accounts'].add(self.accounts[1])
-        self.assertTrue(ret)
+        res_id = self.client_proxy.interfaces['accounts'].add(self.accounts[1])
+        self.assertEqual(res_id, '123')
 
     def testClientUpdate(self):
         ret = self.client_proxy.interfaces['accounts'].update(

@@ -24,7 +24,15 @@ class RestResource(InterfaceBase):
 
     def detail(self, res_id): pass
 
-    def add(self, resource): pass
+    def add(self, resource):
+        """ Define the procedure used add the resource.
+
+        Returns:
+            (str): A str repr of the id of the resource.
+                (E.g. StringField primary key will expect "str_id_value".
+                ComposedField primary key will expect "firstFieldValue/sec/")
+        """
+        pass
 
     def update(self, res_id, resource): pass
 

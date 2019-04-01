@@ -64,8 +64,7 @@ class RestResourceEndPoint:
 
     def add(self, resource):
         resource = self.codec.encode(resource)
-        requests.put(self.path, resource)
-        return True
+        return requests.put(self.path, resource).content.decode()
 
     def delete(self, res_id):
         if isinstance(res_id, dict):

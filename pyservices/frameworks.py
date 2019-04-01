@@ -1,11 +1,9 @@
 import falcon
 import inspect
-import json
 
 from pyservices import entity_codecs
 from pyservices.exceptions import InterfaceDefinitionException
 from pyservices.data_descriptors import ComposedField
-
 
 # TODO refactor
 # TODO work on robustness, exceptions, etc
@@ -49,14 +47,13 @@ class FalconResourceGenerator:
                 'Error creating the restful interface')
 
     def _collection_put(self, req, resp):
-        resp.http_content_type = self.codec.http_content_type
 
         try:
             if self.add:
                 resource = self.codec.decode(
                     req.stream.read(),
                     self.meta_model)
-                self.add(resource)
+                resp.body = self.add(resource)
                 resp.status = falcon.HTTP_CREATED
             else:
                 resp.status = falcon.HTTP_404
@@ -81,7 +78,6 @@ class FalconResourceGenerator:
                 'Error creating the restful interface')
 
     def _resource_post(self, req, resp, **kwargs):
-        resp.http_content_type = self.codec.http_content_type
         res_id = self._validate_res_id(**kwargs)
         if not res_id:
             raise Exception  # TODO
@@ -99,7 +95,6 @@ class FalconResourceGenerator:
                 'Error creating the restful interface')
 
     def _resource_delete(self, req, resp, **kwargs):
-        resp.http_content_type = self.codec.http_content_type
         res_id = self._validate_res_id(**kwargs)
         if not res_id:
             raise Exception  # TODO
