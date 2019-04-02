@@ -1,25 +1,12 @@
 import abc
-import json
 import datetime
-
+import json
 from typing import Union
 
+from pyservices.exceptions import MetaTypeException
 from . import http_content_types
 from .data_descriptors import MetaModel, ListField, ComposedField, \
     ConditionalField, DictField, SimpleField
-from pyservices.exceptions import MetaTypeException
-
-
-# TODO docs
-def get(inst, memb):
-    """Given an instance and a member name, returns it.
-
-    Attributes:
-        inst (obj):  The instance of the object.
-        memb (str): The name of the attribute.
-    """
-
-    return inst.__getattribute__(memb)
 
 
 def instance_attributes(inst):
@@ -30,7 +17,7 @@ def instance_attributes(inst):
     """
     return [n for n in dir(inst)
             if not n.startswith('_')
-            and not callable(get(inst, n))]
+            and not callable(getattr(inst, n))]
 
 
 def instance_callable_objects(inst):
@@ -39,9 +26,9 @@ def instance_callable_objects(inst):
     Attributes:
         inst (obj):  The instance of the object.
     """
-    return [get(inst, n) for n in dir(inst)
+    return [getattr(inst, n) for n in dir(inst)
             if not n.startswith('_')
-            and callable(get(inst, n))]
+            and callable(getattr(inst, n))]
 
 
 def instance_to_dict_repr(val: object):
@@ -60,7 +47,7 @@ def instance_to_dict_repr(val: object):
         return [instance_to_dict_repr(el) for el in val]
 
     # Recursive encoding:
-    return {k: instance_to_dict_repr(get(val, k))
+    return {k: instance_to_dict_repr(getattr(val, k))
             for k in instance_attributes(val)}
 
 

@@ -1,11 +1,9 @@
 import unittest
-
 from datetime import datetime
 
 import pyservices as ps
 from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
     ComposedField, ListField, ConditionalField, DictField
-
 from pyservices.exceptions import MetaTypeException
 
 
@@ -62,12 +60,6 @@ class TestUtils(unittest.TestCase):
                 {'city': 'MySecondCity', 'postal_code': '53102'}],
             'last_access': datetime(2019, 3, 9, 0, 33, 6, 386788),
             'username': 'MyUsername'}
-
-    def test_get(self):
-        username = ps.entity_codecs.get(self.user_instance, 'username')
-        credentials = ps.entity_codecs.get(self.user_instance, 'credentials')
-        self.assertEqual(username, 'my_username')
-        self.assertEqual(credentials, self.user_instance.credentials)
 
     def test_instance_attributes(self):
         attributes = ps.entity_codecs.instance_attributes(self.user_instance)
