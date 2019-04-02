@@ -43,7 +43,7 @@ class Service:
         # this returns a list of tuples
         iface_descriptors = inspect.getmembers(
             self, lambda m: inspect.isclass(m) and issubclass(m, InterfaceBase))
-        return [iface_desc[1](self) for iface_desc in iface_descriptors]
+        return tuple([iface_desc[1](self) for iface_desc in iface_descriptors])
 
     @classmethod
     def get_rest_resources_meta_models(cls):

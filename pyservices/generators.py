@@ -4,6 +4,7 @@ import hashlib
 
 from wsgiref import simple_server
 from threading import Thread
+from collections import namedtuple
 
 import pyservices as ps
 from pyservices.frameworks import FalconResourceGenerator, FALCON
@@ -33,11 +34,15 @@ class RestClient:
         service_path = service_path
         resources = service_class.get_rest_resources_meta_models()
         self.interfaces = {}
-        self.resources_names = []
+        resources_names = []
+        interfaces = {}
         for n, mm in resources.items():
-            self.resources_names.append(n)
-            self.interfaces[n] = RestResourceEndPoint(
+            resources_names.append(n)
+            interfaces[n] = RestResourceEndPoint(
                 f'{service_path}/{n}', mm, codec)
+
+        interfaces_tuple = namedtuple('Interfaces', resources_names)
+        self.interfaces = interfaces_tuple(**interfaces)
 
 
 # TODO docs

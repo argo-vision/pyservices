@@ -122,32 +122,32 @@ class TestRestServer(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
 
     def testClientGetCollection(self):
-        coll = self.client_proxy.interfaces['accounts'].collect()
+        coll = self.client_proxy.interfaces.accounts.collect()
         for el in coll:
             self.assertTrue(isinstance(el, self.account_mm.get_class()))
 
     def testClientGetCollectionParams(self):
         filter_dict = {
             'username': 'third_account'}
-        coll = self.client_proxy.interfaces['accounts'].collect(filter_dict)
+        coll = self.client_proxy.interfaces.accounts.collect(filter_dict)
         third = coll[0]
         self.assertEqual(third.username, 'third_account')
 
     def testClientGetDetail(self):
-        detail = self.client_proxy.interfaces['accounts'].detail(1)
+        detail = self.client_proxy.interfaces.accounts.detail(1)
         self.assertTrue(isinstance(detail, self.account_mm.get_class()))
 
     def testClientAdd(self):
-        res_id = self.client_proxy.interfaces['accounts'].add(self.accounts[1])
+        res_id = self.client_proxy.interfaces.accounts.add(self.accounts[1])
         self.assertEqual(res_id, '123')
 
     def testClientUpdate(self):
-        ret = self.client_proxy.interfaces['accounts'].update(
+        ret = self.client_proxy.interfaces.accounts.update(
             0, self.accounts[1])
         self.assertTrue(ret)
 
     def testClientDelete(self):
-        ret = self.client_proxy.interfaces['accounts'].delete(0)
+        ret = self.client_proxy.interfaces.accounts.delete(0)
         self.assertTrue(ret)
 
 
