@@ -52,9 +52,9 @@ class RestResourceEndPoint:
         self.codec = codec
         self.meta_model = meta_model
 
-    def collect(self):
-        return self.codec.decode(requests.get(self.path).content,
-                                 self.meta_model)
+    def collect(self, params=None):
+        return self.codec.decode(
+            requests.get(self.path, params=params).content, self.meta_model)
 
     def detail(self, res_id):
         if isinstance(res_id, dict):

@@ -28,7 +28,7 @@ class FalconResourceGenerator:
         methods = {name_method[0]: name_method[1]
                    for name_method in inspect.getmembers(
             iface, lambda m: inspect.ismethod(m))}
-        self.collection = methods.get('collect')
+        self.collect = methods.get('collect')
         self.add = methods.get('add')
         self.detail = methods.get('detail')
         self.update = methods.get('update')
@@ -37,9 +37,9 @@ class FalconResourceGenerator:
     def _collection_get(self, req, resp):
         resp.http_content_type = self.codec.http_content_type
         try:
-            if self.collection:
+            if self.collect:
                 resp.body = self.codec.encode(
-                    self.collection())
+                    self.collect(**req.params))
             else:
                 resp.status = falcon.HTTP_404
         except Exception:

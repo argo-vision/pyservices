@@ -44,16 +44,20 @@ class TestRestServer(unittest.TestCase):
                 resource_path = 'accounts'  # default
                 codec = ps.JSON  # default
 
-                def collect(self):
-                    return accounts
+                def collect(self, username=None):
+                    if username:
+                        return [a for a in accounts
+                                if a.username == username]
+                    else:
+                        return accounts
 
                 def detail(self, res_id):
                     return accounts[int(res_id)]
 
                 def add(self, account):
-                    id = '123'
+                    res_id = '123'
                     accounts.append(account)
-                    return id
+                    return res_id
 
                 def update(self, res_id, account):
                     del accounts[int(res_id)]
@@ -121,6 +125,13 @@ class TestRestServer(unittest.TestCase):
         coll = self.client_proxy.interfaces['accounts'].collect()
         for el in coll:
             self.assertTrue(isinstance(el, self.account_mm.get_class()))
+
+    def testClientGetCollectionParams(self):
+        filter_dict = {
+            'username': 'third_account'}
+        coll = self.client_proxy.interfaces['accounts'].collect(filter_dict)
+        third = coll[0]
+        self.assertEqual(third.username, 'third_account')
 
     def testClientGetDetail(self):
         detail = self.client_proxy.interfaces['accounts'].detail(1)
