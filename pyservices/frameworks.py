@@ -53,8 +53,9 @@ class FalconResourceGenerator:
                 resource = self.codec.decode(
                     req.stream.read(),
                     self.meta_model)
-                resp.body = self.add(resource)
+                res_id = self.add(resource)
                 resp.status = falcon.HTTP_CREATED
+                resp.location = f'{req.path}/{res_id}'
             else:
                 resp.status = falcon.HTTP_404
         except Exception:
