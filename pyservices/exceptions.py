@@ -26,3 +26,12 @@ class MetaTypeException(PyservicesBaseException):
     """Error while using the wrong MetaModel type.
     """
     pass
+
+
+class HTTPExceptions(PyservicesBaseException):
+    pass
+
+
+class HTTPUnexpectedStatusCode(HTTPExceptions):
+    def __init__(self, status_code):
+        super().__init__(f'Unexpected status code: {status_code}.')

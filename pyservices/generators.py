@@ -11,6 +11,7 @@ from pyservices.frameworks import FalconResourceGenerator, FALCON
 from pyservices.layer_supertypes import Service
 from pyservices.entity_codecs import Codec, JSON
 from pyservices.interfaces import RestResource
+from pyservices.exceptions import HTTPUnexpectedStatusCode
 
 
 # TODO docs
@@ -58,8 +59,10 @@ class RestResourceEndPoint:
         self.meta_model = meta_model
 
     def collect(self, params=None):
-        return self.codec.decode(
-            requests.get(self.path, params=params).content, self.meta_model)
+        resp = requests.get(self.path, params=params)
+        if resp.status_code == 404:
+            raise HTTPUnexpectedStatusCode(404)
+        return self.codec.decode(resp.content, self.meta_model)
 
     def detail(self, res_id):
         if isinstance(res_id, dict):

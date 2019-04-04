@@ -28,23 +28,30 @@ class FalconResourceGenerator:
         methods = {name_method[0]: name_method[1]
                    for name_method in inspect.getmembers(
             iface, lambda m: inspect.ismethod(m))}
-        self.collect = methods.get('collect')
+        collect_methods_names = filter(
+            lambda k: k.startswith('collect'), methods)
+        self.collect = sorted([methods.get(n) for n in collect_methods_names],
+                              key=lambda m: inspect.getsourcelines(m)[1])
         self.add = methods.get('add')
         self.detail = methods.get('detail')
         self.update = methods.get('update')
         self.delete = methods.get('delete')
 
     def _collection_get(self, req, resp):
-        resp.http_content_type = self.codec.http_content_type
-        try:
-            if self.collect:
-                resp.body = self.codec.encode(
-                    self.collect(**req.params))
-            else:
-                resp.status = falcon.HTTP_404
-        except Exception:
-            raise InterfaceDefinitionException(
-                'Error creating the restful interface')
+        resp.status = falcon.HTTP_404
+        for collect in self.collect:
+            try:
+                sg = inspect.signature(collect)
+                sg.bind(**req.params)
+                resp.body = self.codec.encode(collect(**req.params))
+                resp.status = falcon.HTTP_200
+                resp.http_content_type = self.codec.http_content_type
+                break
+            except TypeError:
+                pass
+            except Exception:
+                raise InterfaceDefinitionException(
+                    'Error creating the restful interface')
 
     def _collection_put(self, req, resp):
 
@@ -85,6 +92,7 @@ class FalconResourceGenerator:
 
         try:
             if self.update:
+                # TODO update requires all the non optional fields
                 resource = self.codec.decode(
                     req.stream.read(),
                     self.meta_model)

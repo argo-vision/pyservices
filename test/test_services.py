@@ -3,11 +3,12 @@ import requests
 import pyservices as ps
 
 from pyservices.layer_supertypes import Service
-from pyservices.data_descriptors import MetaModel, StringField
+from pyservices.data_descriptors import MetaModel, StringField, IntegerField
 from pyservices.generators import RestGenerator
+from pyservices.exceptions import HTTPUnexpectedStatusCode
 
 
-# TODO refactor
+# TODO refactor # test limit cases (0, 1, N)
 class TestRestServer(unittest.TestCase):
 
     def setUp(self):
@@ -17,15 +18,17 @@ class TestRestServer(unittest.TestCase):
                                           StringField('content'))
         self.account_mm = AccountMM = MetaModel('Account',
                                                 StringField('username'),
-                                                StringField('email'))
+                                                StringField('email'),
+                                                IntegerField('friends_number'))
         account_cls = self.account_mm.get_class()
         self.user_mm = UserMM = MetaModel('User',
                                           StringField('username'),
                                           self.account_mm())
         self.accounts = accounts = [
-            account_cls('first_account', 'first@email.com'),
-            account_cls('second_account', 'second@email.com'),
-            account_cls('third_account', 'third@email.com')]
+            account_cls('first_account', 'first@email.com', 2314),
+            account_cls('second_account', 'second@email.com', 5443),
+            account_cls('second_account', 'second223@email.com', 5443),
+            account_cls('third_account', 'third@email.com', 34125)]
         self.users = users = [self.user_mm.get_class()('first_user',
                                                        self.accounts[0])]
         self.notes = notes = [
@@ -44,12 +47,20 @@ class TestRestServer(unittest.TestCase):
                 resource_path = 'accounts'  # default
                 codec = ps.JSON  # default
 
-                def collect(self, username=None):
-                    if username:
-                        return [a for a in accounts
-                                if a.username == username]
-                    else:
+                def collect(self):
                         return accounts
+
+                def collect_username(self, username=None):
+                    return [a for a in accounts
+                            if a.username == username]
+
+                def collect_username_email(self, username, email=None):
+                    return [a for a in accounts
+                            if a.username == username and a.email == email]
+
+                def collect_friends(self, friends_number=None):
+                    return [a for a in accounts
+                            if a.friends_number > int(friends_number)]
 
                 def detail(self, res_id):
                     return accounts[int(res_id)]
@@ -91,27 +102,33 @@ class TestRestServer(unittest.TestCase):
             'http://localhost:7890/account-manager/accounts/1')
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.text,
-                         '{"email": "second@email.com", "username": "second_acc'
-                         'ount"}')
+                         '{"email": "second@email.com", "friends_number": 5443,'
+                         ' "username": "second_account"}')
 
     def testRESTGetResources(self):
         resp = requests.get(
             'http://localhost:7890/account-manager/accounts')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.text,
-                         '[{"email": "first@email.com", "username": "first_acco'
-                         'unt"}, {"email": "second@email.com", "username": "sec'
-                         'ond_account"}, {"email": "third@email.com", "username'
-                         '": "third_account"}]')
+        self.assertEqual(resp.text, '[{"email": "first@email.com", "friends_num'
+                                    'ber": 2314, "username": "first_account"}, '
+                                    '{"email": "second@email.com", "friends_num'
+                                    'ber": 5443, "username": "second_account"},'
+                                    ' {"email": "second223@email.com", "friends'
+                                    '_number": 5443, "username": "second_accoun'
+                                    't"}, {"email": "third@email.com", "friends'
+                                    '_number": 34125, "username": "third_accoun'
+                                    't"}]')
 
     def testRESTAddResource(self):
-        str_account = '{"email" : "new@email.com","username" : "new account"}'
+        str_account = '{"email" : "new@email.com","username" : "new account",' \
+                      ' "friends_number": 1234}'
         resp = requests.put('http://localhost:7890/account-manager/accounts/',
                             str_account.encode())
         self.assertEqual(resp.status_code, 201)
 
     def testRESTUpdateResource(self):
-        str_account = '{"email" : "ed@email.com","username" : "edited account"}'
+        str_account = '{"email" : "ed@email.com","username" : "edited account' \
+                      '", "friends_number": 231}'
         resp = requests.post('http://localhost:7890/account-manager/accounts/1',
                              str_account.encode())
         self.assertEqual(resp.status_code, 200)
@@ -123,15 +140,52 @@ class TestRestServer(unittest.TestCase):
 
     def testClientGetCollection(self):
         coll = self.client_proxy.interfaces.accounts.collect()
+        # TODO len
         for el in coll:
             self.assertTrue(isinstance(el, self.account_mm.get_class()))
 
-    def testClientGetCollectionParams(self):
-        filter_dict = {
-            'username': 'third_account'}
-        coll = self.client_proxy.interfaces.accounts.collect(filter_dict)
-        third = coll[0]
-        self.assertEqual(third.username, 'third_account')
+    def testClientGetCollectionValidParams(self):
+        valid_params = [
+            {},  # match 0,1,3
+            {'username': 'second_account'},  # match 1,2
+            {'username': 'second_account', 'email': 'second@email.com'},  # match 2
+            {'friends_number': 5443},   # match 3
+            {'username': 'not_an_existent_username'},
+            {'friends_number': 999999999}]
+        coll = self.client_proxy.interfaces.accounts.collect(valid_params[0])
+        self.assertEqual(len(coll), 4)
+
+        coll = self.client_proxy.interfaces.accounts.collect(valid_params[1])
+        self.assertEqual(len(coll), 2)
+        for a in coll:
+            self.assertEqual(a.username, 'second_account')
+
+        coll = self.client_proxy.interfaces.accounts.collect(valid_params[2])
+        self.assertEqual(len(coll), 1)
+        self.assertEqual(coll[0].email, 'second@email.com')
+
+        coll = self.client_proxy.interfaces.accounts.collect(valid_params[3])
+        self.assertEqual(len(coll), 1)
+        for a in coll:
+            self.assertGreaterEqual(a.friends_number, 5443)
+
+        coll = self.client_proxy.interfaces.accounts.collect(valid_params[4])
+        self.assertEqual(len(coll), 0)
+
+        coll = self.client_proxy.interfaces.accounts.collect(valid_params[5])
+        self.assertEqual(len(coll), 0)
+
+    def testClientGetCollectionInvalidParams(self):
+        illegal_params = [
+            {'username': 'first_account', 'friends_number': 1234},
+            {'email': 'third@email.com'}]
+        for i in range(2):
+            try:
+                self.client_proxy.interfaces.accounts.collect(illegal_params[i])
+            except HTTPUnexpectedStatusCode:
+                pass
+            else:
+                self.fail(f'{HTTPUnexpectedStatusCode} is be expected.')
 
     def testClientGetDetail(self):
         detail = self.client_proxy.interfaces.accounts.detail(1)
