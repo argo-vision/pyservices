@@ -39,19 +39,23 @@ class FalconResourceGenerator:
 
     def _collection_get(self, req, resp):
         resp.status = falcon.HTTP_404
+        # TODO
         for collect in self.collect:
+            # TODO  move in another method
             try:
                 sg = inspect.signature(collect)
                 sg.bind(**req.params)
-                resp.body = self.codec.encode(collect(**req.params))
-                resp.status = falcon.HTTP_200
-                resp.http_content_type = self.codec.http_content_type
-                break
             except TypeError:
-                pass
-            except Exception:
-                raise InterfaceDefinitionException(
-                    'Error creating the restful interface')
+                continue
+            else:
+                try:
+                    resp.body = self.codec.encode(collect(**req.params))
+                    resp.status = falcon.HTTP_200
+                    resp.http_content_type = self.codec.http_content_type
+                    return
+                except Exception as e:  # TODO
+                    raise InterfaceDefinitionException(
+                        f'Error creating the restful interface - {e}')
 
     def _collection_put(self, req, resp):
 
