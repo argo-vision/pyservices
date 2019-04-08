@@ -35,3 +35,8 @@ class HTTPExceptions(PyservicesBaseException):
 class HTTPUnexpectedStatusCode(HTTPExceptions):
     def __init__(self, status_code):
         super().__init__(f'Unexpected status code: {status_code}.')
+
+
+class HTTPNotFound(HTTPExceptions):
+    def __init__(self):
+        super().__init__(f'Resource not found.')

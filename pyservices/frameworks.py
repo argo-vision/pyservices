@@ -4,6 +4,7 @@ import inspect
 from pyservices import entity_codecs
 from pyservices.exceptions import InterfaceDefinitionException
 from pyservices.data_descriptors import ComposedField
+from pyservices.exceptions import HTTPNotFound
 
 # TODO refactor
 # TODO work on robustness, exceptions, etc
@@ -84,7 +85,9 @@ class FalconResourceGenerator:
                 resp.body = self.codec.encode(
                     self.detail(res_id))
             else:
-                resp.status = falcon.HTTP_404
+                resp.status = falcon.HTTP_405
+        except HTTPNotFound:
+            resp.status = falcon.HTTP_NOT_FOUND
         except Exception:
             raise InterfaceDefinitionException(
                 'Error creating the restful interface')
