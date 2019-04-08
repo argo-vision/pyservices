@@ -15,20 +15,23 @@ class TestRestServer(unittest.TestCase):
         MetaModel.modelClasses = {}
         self.note_mm = NoteMM = MetaModel('Note',
                                           StringField('title'),
-                                          StringField('content'))
+                                          StringField('content'),
+                                          primary_key_name='title')
         self.account_mm = AccountMM = MetaModel('Account',
                                                 StringField('username'),
                                                 StringField('email'),
-                                                IntegerField('friends_number'))
+                                                IntegerField('friends_number'),
+                                                IntegerField('id'),
+                                                primary_key_name='id')
         account_cls = self.account_mm.get_class()
         self.user_mm = UserMM = MetaModel('User',
                                           StringField('username'),
                                           self.account_mm())
         self.accounts = accounts = [
-            account_cls('first_account', 'first@email.com', 2314),
-            account_cls('second_account', 'second@email.com', 5443),
-            account_cls('second_account', 'second223@email.com', 5443),
-            account_cls('third_account', 'third@email.com', 34125)]
+            account_cls('first_account', 'first@email.com', 2314, 1),
+            account_cls('second_account', 'second@email.com', 5443, 2),
+            account_cls('second_account', 'second223@email.com', 5443, 3),
+            account_cls('third_account', 'third@email.com', 34125, 4)]
         self.users = users = [self.user_mm.get_class()('first_user',
                                                        self.accounts[0])]
         self.notes = notes = [
@@ -103,21 +106,22 @@ class TestRestServer(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.text,
                          '{"email": "second@email.com", "friends_number": 5443,'
-                         ' "username": "second_account"}')
+                         ' "id": 2, "username": "second_account"}')
 
     def testRESTGetResources(self):
         resp = requests.get(
             'http://localhost:7890/account-manager/accounts')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.text, '[{"email": "first@email.com", "friends_num'
-                                    'ber": 2314, "username": "first_account"}, '
-                                    '{"email": "second@email.com", "friends_num'
-                                    'ber": 5443, "username": "second_account"},'
-                                    ' {"email": "second223@email.com", "friends'
-                                    '_number": 5443, "username": "second_accoun'
-                                    't"}, {"email": "third@email.com", "friends'
-                                    '_number": 34125, "username": "third_accoun'
-                                    't"}]')
+        self.assertEqual(resp.text, '[{"email": "first@email.com", "friends_numb'
+                                    'er": 2314, "id": 1, "username": "first_ac'
+                                    'count"}, {"email": "second@email.com", "f'
+                                    'riends_number": 5443, "id": 2, "username"'
+                                    ': "second_account"}, {"email": "second223'
+                                    '@email.com", "friends_number": 5443, "id"'
+                                    ': 3, "username": "second_account"}, {"ema'
+                                    'il": "third@email.com", "friends_number":'
+                                    ' 34125, "id": 4, "username": "third_accou'
+                                    'nt"}]')
 
     def testRESTAddResource(self):
         str_account = '{"email" : "new@email.com","username" : "new account",' \

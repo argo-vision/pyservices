@@ -13,21 +13,18 @@ class TestDataDescriptor(unittest.TestCase):
     def setUp(self):
         self.now = datetime.now()
         self.title_field = StringField(name='title')
-        self.content_field = StringField(name='content', optional=True)
+        self.content_field = StringField(name='content')
         self.date_time_field = DateTimeField(name='datetime', default=self.now)
         MetaModel.modelClasses = dict()
         self.note_desc = MetaModel(
             'Note',
             self.title_field,
             self.content_field,
-            self.date_time_field,
-            identifiable=False)
+            self.date_time_field)
         self.Note = self.note_desc.get_class()
 
     def testField(self):
         self.assertRaises(TypeError, Field)
-        self.assertRaises(ValueError, BooleanField, name='title',
-                          optional=True, default=True)
         self.assertRaises(ValueError, BooleanField, name='Title')
 
     def testDateTimeField(self):
@@ -65,7 +62,6 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertRaises(ModelInitException, self.Note, 'title', title='title')
 
     def testGeneratedClassOnFieldConstraints(self):
-        self.assertRaises(ModelInitException, self.Note)
         self.assertRaises(ModelInitException, self.Note, title=1)
 
     def testGeneratedClassIdempotence(self):
@@ -86,8 +82,7 @@ class TestDataDescriptor(unittest.TestCase):
         email_mm = MetaModel('Email', StringField('address'),
                              DateTimeField('creation_date'))
         user_mm = MetaModel('User', StringField('name'),
-                            ListField('notes', optional=False,
-                                      data_type=StringField),
+                            ListField('notes', data_type=StringField),
                             ListField('emails', data_type=email_mm))
 
         Email = email_mm.get_class()
@@ -103,8 +98,10 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertListEqual(user.notes, ['Note1', 'Note2', 'Note3'])
         self.assertRaises(ModelInitException, user_cls, 'UserName',
                           ['Note1', 1, 'Note3'], emails)
-        self.assertRaises(ModelInitException, user_cls, 'UserName',
-                          None, emails)
+        try:
+            user_cls('UserName', None, emails)
+        except Exception as e:
+            self.fail(e)
 
     def testNestedSequences(self):
         # TODO not working
@@ -199,8 +196,7 @@ class TestDataDescriptor(unittest.TestCase):
             credential_meta_model(),
             ComposedField('address',
                           StringField('city'),
-                          StringField('postalCode'),
-                          optional=True))
+                          StringField('postalCode')))
 
         self.assertRaises(ModelInitException,
                           user_meta_model.get_class(),

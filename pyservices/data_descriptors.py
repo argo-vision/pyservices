@@ -21,8 +21,7 @@ class Field(abc.ABC):
     def __init__(self,
                  name: str,
                  field_type: _T,
-                 default: Union[_T, Callable[..., _T], None] = None,
-                 optional: Optional[bool] = False) -> None:
+                 default: Union[_T, Callable[..., _T], None] = None) -> None:
         """ Initialize the field.
 
         Attributes:
@@ -33,21 +32,15 @@ class Field(abc.ABC):
             default (Union[_T, Callable[...,_T], None]): Could be either a
                 field_type object or a callable object returning a field_type
                 object. Defaults to None.
-            optional (Optional[bool]): A boolean indicating either the field will
-                require a value(False) or don't(True). Defaults to None.
 
         Raises:
             ValueError:
-                If a field has a default value if must be non optional.
                 If the first letter of the provided name is uppercase.
         """
-        if optional and default:
-            raise ValueError('An optional field cannot have a default')
         if str.isupper(name[0]):
             raise ValueError('The case of the name must be lowercase')
         self.name = name
         self.field_type = field_type
-        self.optional = optional
         self.default = default
 
     def init_value(self, value):
@@ -85,8 +78,7 @@ class MetaModel:
     def __init__(self,
                  name: str,
                  *args: Field,
-                 primary_key_name: Optional[str] = None,
-                 identifiable: Optional[bool] = True):
+                 primary_key_name: Optional[str] = None):
         """ Initialize the meta model.
 
         Attributes:
@@ -96,10 +88,6 @@ class MetaModel:
                 with _generate_class method.
             primary_key_name (Optional[str]): The name of the field which will
                 be the used as primary key for the model.
-            identifiable (Optional[bool]): True if the described model must be
-                identified. If set to True while a primary_key_name is not
-                provided, an _id field will be used or created. It must be true
-                while we need to access to a particular element (e.g. CRUD ops).
 
         Raises:
             ValueError:
@@ -127,25 +115,22 @@ class MetaModel:
                 raise MetaTypeException(
                     f'A {type(arg)} type is not a valid type. A {Field} is '
                     f'expected.')
+            if arg.name.startswith('_'):
+                raise MetaTypeException(
+                    f'A field name cannot begin with an "_".')
         title_set = {field.name for field in args}
         if len(title_set) < len(args):
             raise ValueError('Fields must have unique name')
         if primary_key_name:
-            if not identifiable:
-                raise ModelInitException(f'If a primary key name is provided, '
-                                         f'the MetaModel must be identifiable')
             if primary_key_name not in title_set:
                 raise ValueError('There are no fields with the title '
                                  'corresponding to the primary_key_name '
                                  f'({primary_key_name}).')
         self.name = name
         self.fields = args
-        self.identifiable = identifiable
-        if identifiable:
-            primary_key_name = primary_key_name or '_id'
+        if primary_key_name:
             primary_key_field = next(filter(
-                lambda f: f.name == primary_key_name, args),
-                StringField('_id', optional=True))
+                lambda field: field.name == primary_key_name, args))
             if not isinstance(primary_key_field, (ComposedField, SimpleField)):
                 raise ModelInitException(f'The primary key must refer to '
                                          f'either a SimpleField or a '
@@ -195,7 +180,6 @@ class MetaModel:
                     If an unknown key is present in kwargs.
                     If there are some inconsistencies between args and kwargs.
                     If the default type if wrong.
-                    If no value is passed for a non optional field.
             """
             if max(len(args), len(kwargs)) > len(self.fields):
                 raise ModelInitException('There are too many arguments.')
@@ -227,10 +211,8 @@ class MetaModel:
                                 f'{field_values.field_type}'
                             )
                         field_values[field.name] = value
-                    elif not field.optional:
-                        raise ModelInitException(
-                            f'The field named "{field.name}"'
-                            f'is not optional.')
+                    else:
+                        field_values[field.name] = None  # TODO optional removed TEST
                 else:
                     # In this case, the initialization depends on a condition
                     if isinstance(field, ConditionalField):
@@ -265,26 +247,23 @@ class MetaModel:
                 - The value of the dict if the primary_key_field is a
                     SimpleField.
         """
-        if self.identifiable:
-            pkf = self.primary_key_field
-            kwargs_len = len(kwargs.items())
-            if isinstance(pkf, ComposedField) and\
-                    len(pkf.meta_model.fields) == kwargs_len:
-                field_values = {
-                    k[0].name: k
-                    for k in zip(pkf.meta_model.fields, kwargs.values())}
-                for k, v in field_values.items():
-                    field_values[k] = v[0].init_value(v[1], strict=False) # TODO docs
-                res_id = pkf.meta_model.get_class()(**field_values)
-            elif isinstance(pkf, SimpleField) and kwargs_len == 1:
-                res_id = list(kwargs.values())[0]
-                res_id = pkf.init_value(res_id, strict=False)
-                # TODO non String field breaks here? TEST!!
-            else:
-                raise ModelInitException('The primary key is not compatible.'
-                                         f'{pkf}')
+        pkf = self.primary_key_field
+        kwargs_len = len(kwargs.items())
+        if isinstance(pkf, ComposedField) and\
+                len(pkf.meta_model.fields) == kwargs_len:
+            field_values = {
+                k[0].name: k
+                for k in zip(pkf.meta_model.fields, kwargs.values())}
+            for k, v in field_values.items():
+                field_values[k] = v[0].init_value(v[1], strict=False) # TODO docs
+            res_id = pkf.meta_model.get_class()(**field_values)
+        elif isinstance(pkf, SimpleField) and kwargs_len == 1:
+            res_id = list(kwargs.values())[0]
+            res_id = pkf.init_value(res_id, strict=False)
+            # TODO non String field breaks here? TEST!!
         else:
-            res_id = list(kwargs.values())[0]  # TODO !! not dry
+            raise ModelInitException('The primary key is not compatible.'
+                                     f'{pkf}')
         return res_id
 
 
@@ -300,10 +279,9 @@ class SimpleField(Field):
     def __init__(self,
                  name: str,
                  default: Union[static_field_type,
-                                Callable[..., static_field_type], None] = None,
-                 optional: Optional[bool] = False) -> None:
+                                Callable[..., static_field_type], None] = None) -> None:
         super().__init__(name, self.__class__.static_field_type,
-                         default, optional)
+                         default)
 
     # TODO docs
     def init_value(self, value, strict=True):
@@ -370,7 +348,6 @@ class ComposedField(Field):
     def __init__(self,
                  name: str,
                  *args: Field,
-                 optional: Optional[bool] = False,
                  meta_model: MetaModel = None) -> None:
         """ Initialize the ComposedField.
 
@@ -386,9 +363,8 @@ class ComposedField(Field):
             self.meta_model = meta_model
         else:
             self.meta_model = MetaModel(
-                name.capitalize() + '_' + str(uuid.uuid4()), *args,
-                identifiable=False)
-        super().__init__(name, self.meta_model.get_class(), None, optional)
+                name.capitalize() + '_' + str(uuid.uuid4()), *args)
+        super().__init__(name, self.meta_model.get_class(), None)
 
     def get_class(self):
         """ Return the class of the MetaModel.
@@ -403,8 +379,7 @@ class ListField(Field):
     def __init__(self,
                  name: str,
                  data_type: Union[SimpleField.__class__, MetaModel],
-                 default: Union[list, Callable[..., list], None] = None,
-                 optional: Optional[bool] = False) -> None:
+                 default: Union[list, Callable[..., list], None] = None) -> None:
         """ Initialize the ListField
         Attributes:
             data_type (Union[SimpleField.__class__, MetaModel]): An object used
@@ -417,7 +392,7 @@ class ListField(Field):
             raise MetaTypeException(f'The data_type must be either a '
                                     f'SimpleField or a MetaModel instance, not '
                                     f'a {type(data_type)}.')
-        super().__init__(name, list, default, optional)
+        super().__init__(name, list, default)
 
     def init_value(self, value):
         """ Return the value of a correct type.
@@ -454,8 +429,7 @@ class ConditionalField(Field):
     def __init__(self,
                  name: str,
                  meta_models: Mapping[str, MetaModel],
-                 evaluation_field_name: str,
-                 optional: Optional[bool] = False) -> None:
+                 evaluation_field_name: str) -> None:
         """ Initialize the ConditionalField.
 
         The field_type is set to None and it will be dynamically evaluated when
@@ -470,7 +444,7 @@ class ConditionalField(Field):
         """
         self.meta_models = meta_models
         self.evaluation_field_name = evaluation_field_name
-        super().__init__(name, None, None, optional)
+        super().__init__(name, None, None)
 
     def init_value(self, value):
         """I have to type check the value at when the new model is being

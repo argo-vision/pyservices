@@ -77,7 +77,7 @@ class FalconResourceGenerator:
     def _resource_get(self, req, resp, **kwargs):
         resp.http_content_type = self.codec.http_content_type
         res_id = self._validate_res_id(**kwargs)
-        if not res_id:
+        if res_id is None:
             raise Exception  # TODO
 
         try:
@@ -94,7 +94,7 @@ class FalconResourceGenerator:
 
     def _resource_post(self, req, resp, **kwargs):
         res_id = self._validate_res_id(**kwargs)
-        if not res_id:
+        if res_id is None:
             raise Exception  # TODO
 
         try:
@@ -112,7 +112,7 @@ class FalconResourceGenerator:
 
     def _resource_delete(self, req, resp, **kwargs):
         res_id = self._validate_res_id(**kwargs)
-        if not res_id:
+        if res_id is None:
             raise Exception  # TODO
 
         try:

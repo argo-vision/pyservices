@@ -39,7 +39,8 @@ def instance_to_dict_repr(val: object):
     """
 
     # Single object
-    if isinstance(val, (dict, bool, str, int, float, datetime.datetime)):
+    if isinstance(val, (dict, bool, str, int, float, datetime.datetime,
+                        type(None))):
         return val
 
     # List of objects
