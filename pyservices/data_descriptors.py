@@ -1,5 +1,6 @@
 import abc
 import datetime
+import copy
 import uuid
 
 from typing import NewType, Callable, TypeVar, Sequence, Optional, Union, \
@@ -203,7 +204,7 @@ class MetaModel:
                         if callable(field.default):
                             value = field.default()
                         else:
-                            value = field.default
+                            value = copy.deepcopy(field.default)
                         if not isinstance(value, field.field_type):  # TODO
                             raise ModelInitException(
                                 f'The default value has a bad type '
