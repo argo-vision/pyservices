@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from collections import namedtuple
+import re
 from threading import Thread
 from wsgiref import simple_server
 
@@ -15,6 +16,7 @@ from pyservices.layer_supertypes import Service
 
 logger = logging.getLogger(__package__)
 
+# TODO better exceptions
 
 # TODO docs
 class RestClient:
@@ -61,7 +63,22 @@ class RestResourceEndPoint:
         self.codec = codec
         self.meta_model = meta_model
 
-    def collect(self, params=None):
+    def collect(self, params: dict = None):
+        if params:
+            if not isinstance(params, dict):
+                raise RuntimeError(
+                    f'The type of params must be a dict. Not a {type(params)}')
+            illegal_params_re = re.compile('[&=#]')
+            for k, v in params.items():
+                if not isinstance(k, str):
+                    raise RuntimeError(f'The param keys must be strings.')
+                if illegal_params_re.search(k):
+                    raise RuntimeError(f'The param keys cannot contain '
+                                       f'{illegal_params_re.pattern}.')
+                if isinstance(v, str) and illegal_params_re.search(v):
+                    raise RuntimeError(f'The param values cannot contain '
+                                       f'{illegal_params_re.pattern}.')
+
         try:
             resp = requests.get(self.path, params=params)
         except Exception:

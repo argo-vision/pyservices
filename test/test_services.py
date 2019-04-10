@@ -182,12 +182,14 @@ class TestRestServer(unittest.TestCase):
     def testClientGetCollectionInvalidParams(self):
         illegal_params = [
             {'username': 'first_account', 'friends_number': 1234},
-            {'email': 'third@email.com'}]
-        for i in range(2):
+            {'email': 'third@email.com'},
+            'username=second_account&email&second@email.com', 
+            {'fake': '0&username=second_account&email&second@email.com'}]
+        for i in range(4):
             try:
                 self.client_proxy.interfaces.accounts.collect(illegal_params[i])
             except RuntimeError:
-                pass
+                continue
             else:
                 self.fail(f'{RuntimeError} is be expected.')
 
