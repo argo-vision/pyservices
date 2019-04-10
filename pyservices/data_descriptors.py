@@ -1,13 +1,12 @@
 import abc
-import datetime
 import copy
+import datetime
 import uuid
-
 from typing import NewType, Callable, TypeVar, Sequence, Optional, Union, \
     Mapping
 
-from pyservices.exceptions import ModelInitException, MetaTypeException
 import pyservices as ps
+from pyservices.exceptions import ModelInitException, MetaTypeException
 
 
 class Field(abc.ABC):
@@ -43,6 +42,13 @@ class Field(abc.ABC):
         self.name = name
         self.field_type = field_type
         self.default = default
+
+    def __repr__(self):
+        return '<{}:{}[{};{}]>'.format(
+            self.name,
+            self.__class__.__name__,
+            self.field_type.__name__,
+            self.default)
 
     def init_value(self, value):
         """ Return the value of a correct type.
@@ -166,6 +172,7 @@ class MetaModel:
     def _generate_class(self):
         """ Generate the class based on the fields of the meta model.
         """
+
         def new(cls, *args, **kwargs):
             """ Create and return a new instance of the model.
 
@@ -250,13 +257,13 @@ class MetaModel:
         """
         pkf = self.primary_key_field
         kwargs_len = len(kwargs.items())
-        if isinstance(pkf, ComposedField) and\
+        if isinstance(pkf, ComposedField) and \
                 len(pkf.meta_model.fields) == kwargs_len:
             field_values = {
                 k[0].name: k
                 for k in zip(pkf.meta_model.fields, kwargs.values())}
             for k, v in field_values.items():
-                field_values[k] = v[0].init_value(v[1], strict=False) # TODO docs
+                field_values[k] = v[0].init_value(v[1], strict=False)  # TODO docs
             res_id = pkf.meta_model.get_class()(**field_values)
         elif isinstance(pkf, SimpleField) and kwargs_len == 1:
             res_id = list(kwargs.values())[0]
@@ -266,6 +273,9 @@ class MetaModel:
             raise ModelInitException('The primary key is not compatible.'
                                      f'{pkf}')
         return res_id
+
+    def __repr__(self):
+        return '{}:{}'.format(self.name, self.fields)
 
 
 class SimpleField(Field):
@@ -427,6 +437,7 @@ class ConditionalField(Field):
     """ A field with different MetaModels associated.
 
     """
+
     def __init__(self,
                  name: str,
                  meta_models: Mapping[str, MetaModel],
