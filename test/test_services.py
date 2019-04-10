@@ -1,11 +1,11 @@
 import unittest
-import requests
-import pyservices as ps
 
-from pyservices.layer_supertypes import Service
+import requests
+
+import pyservices as ps
 from pyservices.data_descriptors import MetaModel, StringField, IntegerField
 from pyservices.generators import RestGenerator
-from pyservices.exceptions import HTTPUnexpectedStatusCode
+from pyservices.layer_supertypes import Service
 
 
 # TODO refactor # test limit cases (0, 1, N)
@@ -51,7 +51,7 @@ class TestRestServer(unittest.TestCase):
                 codec = ps.JSON  # default
 
                 def collect(self):
-                        return accounts
+                    return accounts
 
                 def collect_username(self, username=None):
                     return [a for a in accounts
@@ -82,10 +82,10 @@ class TestRestServer(unittest.TestCase):
 
         self.AccountManager = AccountManager
         account_manager_service = self.AccountManager({
-                    'address': 'localhost',
-                    'port': '7890',
-                    'framework': ps.frameworks.FALCON,
-                    'service_base_path': 'account-manager'})
+            'address': 'localhost',
+            'port': '7890',
+            'framework': ps.frameworks.FALCON,
+            'service_base_path': 'account-manager'})
         RestGenerator._servers = {}
         try:
             self.thread, self.httpd = RestGenerator.generate_rest_server(
@@ -153,7 +153,7 @@ class TestRestServer(unittest.TestCase):
             {},  # match 0,1,3
             {'username': 'second_account'},  # match 1,2
             {'username': 'second_account', 'email': 'second@email.com'},  # match 2
-            {'friends_number': 5443},   # match 3
+            {'friends_number': 5443},  # match 3
             {'username': 'not_an_existent_username'},
             {'friends_number': 999999999}]
         coll = self.client_proxy.interfaces.accounts.collect(valid_params[0])
@@ -186,10 +186,10 @@ class TestRestServer(unittest.TestCase):
         for i in range(2):
             try:
                 self.client_proxy.interfaces.accounts.collect(illegal_params[i])
-            except HTTPUnexpectedStatusCode:
+            except RuntimeError:
                 pass
             else:
-                self.fail(f'{HTTPUnexpectedStatusCode} is be expected.')
+                self.fail(f'{RuntimeError} is be expected.')
 
     def testClientGetDetail(self):
         detail = self.client_proxy.interfaces.accounts.detail(1)

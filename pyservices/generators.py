@@ -1,17 +1,19 @@
+import hashlib
+import logging
+from collections import namedtuple
+from threading import Thread
+from wsgiref import simple_server
+
 import falcon
 import requests
-import hashlib
-
-from wsgiref import simple_server
-from threading import Thread
-from collections import namedtuple
 
 import pyservices as ps
-from pyservices.frameworks import FalconResourceGenerator, FALCON
-from pyservices.layer_supertypes import Service
 from pyservices.entity_codecs import Codec, JSON
+from pyservices.frameworks import FalconResourceGenerator, FALCON
 from pyservices.interfaces import RestResource
-from pyservices.exceptions import HTTPUnexpectedStatusCode
+from pyservices.layer_supertypes import Service
+
+logger = logging.getLogger(__package__)
 
 
 # TODO docs
@@ -52,6 +54,7 @@ class RestResourceEndPoint:
         resource.
 
     """
+
     def __init__(self, path, meta_model, codec):
         """ Initialize the end point"""
         self.path = path
@@ -59,36 +62,111 @@ class RestResourceEndPoint:
         self.meta_model = meta_model
 
     def collect(self, params=None):
-        resp = requests.get(self.path, params=params)
-        if resp.status_code == 404:
-            raise HTTPUnexpectedStatusCode(404)
-        return self.codec.decode(resp.content, self.meta_model)
+        try:
+            resp = requests.get(self.path, params=params)
+        except Exception:
+            raise RuntimeError("Exception on request")
+
+        if resp.status_code == 200:
+            try:
+                data = self.codec.decode(resp.content, self.meta_model)
+            except:
+                raise RuntimeError("Cannot decode received data")
+            return data
+
+        if resp.status_code == 403:
+            raise RuntimeError("Forbidden request")
+
+        raise RuntimeError("Server side exception")
 
     def detail(self, res_id):
+        # FIXME: this should be a primary key for the model
         if isinstance(res_id, dict):
             res_id = "/".join(res_id.values())
-        return self.codec.decode(requests.get(f'{self.path}/{res_id}').content,
-                                 self.meta_model)
+
+        path = f'{self.path}/{res_id}'
+        try:
+            resp = requests.get(path)
+        except Exception:
+            raise RuntimeError("Exception on request")
+
+        if resp.status_code == 200:
+            try:
+                data = self.codec.decode(resp.content, self.meta_model)
+            except:
+                raise RuntimeError("Cannot decode received data")
+            return data
+
+        if resp.status_code == 403:
+            raise RuntimeError("Forbidden request")
+
+        raise RuntimeError("Server side exception")
 
     def add(self, resource):
-        resource = self.codec.encode(resource)
-        resp = requests.put(self.path, resource)
-        loc = resp.headers['location']
-        res_id = loc.replace(resp.request.path_url + '/', '')
-        return res_id
+        if not isinstance(resource, self.meta_model.get_class()):
+            raise ValueError('Expected a {}'.format(self.meta_model.name))
+
+        try:
+            resource = self.codec.encode(resource)
+        except:
+            raise RuntimeError("Cannot decode resource")
+
+        try:
+            resp = requests.put(self.path, resource)
+        except:
+            raise RuntimeError("Exception on request")
+
+        if resp.status_code == 201:
+            loc = resp.headers['location']
+            res_id = loc.replace(resp.request.path_url + '/', '')
+            # FIXME: this should be maybe a primary key?
+            return res_id
+
+        if resp.status_code == 403:
+            raise RuntimeError("Forbidden request")
+
+        raise RuntimeError("Server side exception")
 
     def delete(self, res_id):
+        # FIXME: res_id should be a primary key for the model
         if isinstance(res_id, dict):
             res_id = "/".join(res_id.values())
-        requests.delete(f'{self.path}/{res_id}')
-        return True
+
+        path = f'{self.path}/{res_id}'
+        try:
+            resp = requests.delete(path)
+        except:
+            raise RuntimeError("Exception on request")
+
+        if resp.status_code == 200:
+            return True
+
+        if resp.status_code == 403:
+            raise RuntimeError("Forbidden request")
+
+        raise RuntimeError("Server side exception")
 
     def update(self, res_id, resource):
+        # FIXME: res_id should be a primary key for the model
+        if not isinstance(resource, self.meta_model.get_class()):
+            raise ValueError('Expected a {}'.format(self.meta_model.name))
+
         if isinstance(res_id, dict):
             res_id = "/".join(res_id.values())
-        resource = self.codec.encode(resource)
-        requests.post(f'{self.path}/{res_id}', resource)
-        return True
+        try:
+            resource = self.codec.encode(resource)
+        except:
+            raise RuntimeError("Cannot encode the resource")
+
+        resp = requests.post(f'{self.path}/{res_id}', resource)
+
+        if resp.status_code == 200:
+            return True
+
+        if resp.status_code == 403:
+            raise RuntimeError("Forbidden request")
+
+        raise RuntimeError("Server side exception")
 
 
 # TODO be more generic, abstract for other type of interfaces
@@ -145,7 +223,7 @@ class RestGenerator:
                     app.add_route(f'{path}/{res_path}', resources[1])
 
                 # TODO simple_server is temporary
-                httpd = simple_server.make_server(address, port,application,
+                httpd = simple_server.make_server(address, port, application,
                                                   handler_class=Handler)
                 ps.log.info(f'Serving {base_path} on {address} port {port}')
 
