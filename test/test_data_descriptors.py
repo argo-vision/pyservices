@@ -215,6 +215,28 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertIsInstance(user_instance, user_class)
         self.assertIsInstance(user_instance.credentials, credential_class)
 
+    def testMetaModelFields(self):
+        model_a = MetaModel('A')
+        self.assertEqual(0, len(model_a.fields))
+
+        model_b0 = MetaModel('B0', StringField('a'))
+        self.assertEqual(1, len(model_b0.fields))
+
+        model_b1 = MetaModel('B1', StringField('a'), primary_key_name='a')
+        self.assertEqual(1, len(model_b1.fields))
+
+        model_c0 = MetaModel('C0', StringField('id'))
+        self.assertEqual(1, len(model_c0.fields))
+
+        model_c1 = MetaModel('C1', StringField('id'), primary_key_name='id')
+        self.assertEqual(1, len(model_c1.fields))
+
+        model_d0 = MetaModel('D0', StringField('id0'), StringField('id1'), primary_key_name='id0')
+        self.assertEqual(2, len(model_d0.fields))
+
+        model_e0 = MetaModel('E0', ComposedField('a', StringField('a'), StringField('b')))
+        self.assertEqual(1, len(model_e0.fields))
+
 
 if __name__ == '__main__':
     unittest.main()

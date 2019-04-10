@@ -44,7 +44,7 @@ class Field(abc.ABC):
         self.default = default
 
     def __repr__(self):
-        return '<{}:{}[{};{}]>'.format(
+        return '<Field {}:{}[{};{}]>'.format(
             self.name,
             self.__class__.__name__,
             self.field_type.__name__,
@@ -148,7 +148,7 @@ class MetaModel:
                         raise ModelInitException(
                             f'Primary key fields with non SimpleField fields '
                             f'are not supported.')
-            self.fields = self.fields + (primary_key_field,)
+            self.fields = self.fields
             self.primary_key_field = primary_key_field
 
         MetaModel.modelClasses[self.name] = self._generate_class()
@@ -275,7 +275,7 @@ class MetaModel:
         return res_id
 
     def __repr__(self):
-        return '{}:{}'.format(self.name, self.fields)
+        return '<MetaModel {}:{}>'.format(self.name, self.fields)
 
 
 class SimpleField(Field):
