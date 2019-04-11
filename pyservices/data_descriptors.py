@@ -2,8 +2,7 @@ import abc
 import copy
 import datetime
 import uuid
-from typing import NewType, Callable, TypeVar, Sequence, Optional, Union, \
-    Mapping
+from typing import Callable, TypeVar, Optional, Union, Mapping
 
 import pyservices as ps
 from pyservices.exceptions import ModelInitException, MetaTypeException
@@ -38,19 +37,19 @@ class Field(abc.ABC):
                 If the first letter of the provided name is uppercase.
         """
         if str.isupper(name[0]):
-            raise ValueError('The case of the name must be lowercase')
+            raise ValueError('The case of the name must be lowercase.')
         self.name = name
         self.field_type = field_type
         self.default = default
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<Field {}:{}[{};{}]>'.format(
             self.name,
             self.__class__.__name__,
             self.field_type.__name__,
             self.default)
 
-    def init_value(self, value):
+    def init_value(self, value, strict: bool = True):
         """ Return the value of a correct type.
 
         If the field_type is not a builtin, it may be necessary to perform
@@ -58,6 +57,7 @@ class Field(abc.ABC):
 
         Attributes:
             value: The value used to initialize the model.
+            strict (bool): Flag used to perform a strict initialization.
 
         Returns:
             _T: The value of a correct type.
@@ -85,7 +85,7 @@ class MetaModel:
     def __init__(self,
                  name: str,
                  *args: Field,
-                 primary_key_name: Optional[str] = None):
+                 primary_key_name: Optional[str] = None) -> None:
         """ Initialize the meta model.
 
         Attributes:
@@ -220,7 +220,7 @@ class MetaModel:
                             )
                         field_values[field.name] = value
                     else:
-                        field_values[field.name] = None  # TODO optional removed TEST
+                        field_values[field.name] = None
                 else:
                     # In this case, the initialization depends on a condition
                     if isinstance(field, ConditionalField):
@@ -250,25 +250,22 @@ class MetaModel:
 
         Returns:
             It could be:
-                - An instance of the related MetaModel if the primary_key
-                    field is a ComposedField.
-                - The value of the dict if the primary_key_field is a
-                    SimpleField.
+                - An instance of the related MetaModel's class if the
+                    primary_key field is a ComposedField.
+                - The value of the single kwarg passed if the primary_key_field
+                    is a SimpleField.
         """
         pkf = self.primary_key_field
         kwargs_len = len(kwargs.items())
         if isinstance(pkf, ComposedField) and \
                 len(pkf.meta_model.fields) == kwargs_len:
-            field_values = {
-                k[0].name: k
-                for k in zip(pkf.meta_model.fields, kwargs.values())}
-            for k, v in field_values.items():
-                field_values[k] = v[0].init_value(v[1], strict=False)  # TODO docs
+            field_names = [f.name for f in pkf.meta_model.fields]
+            field_values = dict(zip(field_names, kwargs.values()))
+            pkf.init_value(field_values, strict=False)
             res_id = pkf.meta_model.get_class()(**field_values)
         elif isinstance(pkf, SimpleField) and kwargs_len == 1:
             res_id = list(kwargs.values())[0]
             res_id = pkf.init_value(res_id, strict=False)
-            # TODO non String field breaks here? TEST!!
         else:
             raise ModelInitException('The primary key is not compatible.'
                                      f'{pkf}')
@@ -290,17 +287,28 @@ class SimpleField(Field):
     def __init__(self,
                  name: str,
                  default: Union[static_field_type,
-                                Callable[..., static_field_type], None] = None) -> None:
+                                Callable[..., static_field_type], None] = None
+                 ) -> None:
         super().__init__(name, self.__class__.static_field_type,
                          default)
 
-    # TODO docs
-    def init_value(self, value, strict=True):
+    def init_value(self, value, strict: bool = True):
+        """ Initialize a SimpleField.
+
+        Attributes:
+            value: The value used to initialize the data.
+            strict (bool): Used tu perform a strict initialization.
+                If False, some type conversions based on the static_field_type
+                    are tried before initializing the field. (E.g. an Integer
+                    field could be initialized with a '1' string value since it
+                    could be casted to int.
+
+        """
         if not strict:
             try:
                 value = self.static_field_type(value)
-            except Exception:  # TODO
-                pass  # TODO
+            except TypeError:
+                pass
         return super().init_value(value)
 
 
@@ -333,7 +341,9 @@ class DateTimeField(SimpleField):
     """
     static_field_type = datetime.datetime
 
-    def init_value(self, value, strict=True):
+    # TODO strict could be used as false to perform the following conversions on
+    #  the _init_ of an extension of datetime.datetime
+    def init_value(self, value, strict: bool = True):
         """ Initialize the datetime value.
 
         It initialize the datetime in different ways according to the type of
@@ -349,12 +359,10 @@ class DateTimeField(SimpleField):
 class ComposedField(Field):
     """ A group of fields.
 
-    This class inherits from Field.
     If a ComposedField is initialized through a MetaModel __call__ method,
         the field_type is already cached on MetaModel.modelClasses.
     The field_type is obtained from the MetaModel.
     """
-    _FieldType = NewType('_FieldType', Field)
 
     def __init__(self,
                  name: str,
@@ -363,7 +371,7 @@ class ComposedField(Field):
         """ Initialize the ComposedField.
 
         Attributes:
-            *args (Sequence[MetaModel._FieldType]): The fields which compose the
+            *args (Field); The fields which compose the
                 ComposedField
             meta_model (type): The related MetaModel. If passed, the composed
                 field is generated from an existing MetaModel. If not, a
@@ -382,6 +390,28 @@ class ComposedField(Field):
         """
         return self.meta_model.get_class()
 
+    def init_value(self, value, strict: bool = True):
+        """ Initialize the ComposedField.
+
+        Arguments:
+            value: If the type is dict, the map represent the values used to
+                initialize the meta model related to the ComposedField.
+            strict (bool): Flag used to perform a strict initialization.
+
+        Returns:
+            An instance of the class of the meta model related to the composed
+            field.
+        """
+        if isinstance(value, dict):
+            for field in self.meta_model.fields:
+                v = value.get(field.name, None)
+                if v is None:
+                    raise ModelInitException(f'The id is not valid. '
+                                             f'"{field.name}"" is missing.')
+                value[field.name] = field.init_value(v, strict=strict)
+            value = self.meta_model.get_class()(**value)
+        return super().init_value(value)
+
 
 class ListField(Field):
     """ A list field.
@@ -390,7 +420,8 @@ class ListField(Field):
     def __init__(self,
                  name: str,
                  data_type: Union[SimpleField.__class__, MetaModel],
-                 default: Union[list, Callable[..., list], None] = None) -> None:
+                 default: Union[list, Callable[..., list], None] = None
+                 ) -> None:
         """ Initialize the ListField
         Attributes:
             data_type (Union[SimpleField.__class__, MetaModel]): An object used
@@ -405,7 +436,7 @@ class ListField(Field):
                                     f'a {type(data_type)}.')
         super().__init__(name, list, default)
 
-    def init_value(self, value):
+    def init_value(self, value, strict: bool = True):
         """ Return the value of a correct type.
 
         Checks the type of the elements of the list.
@@ -458,7 +489,7 @@ class ConditionalField(Field):
         self.evaluation_field_name = evaluation_field_name
         super().__init__(name, None, None)
 
-    def init_value(self, value):
+    def init_value(self, value, strict: bool = True):
         """I have to type check the value at when the new model is being
             created.
 

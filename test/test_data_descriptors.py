@@ -1,39 +1,32 @@
 import unittest
-from datetime import datetime
-
-from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
-    Field, BooleanField, ComposedField, ListField, IntegerField, \
-    ConditionalField, DictField
+from pyservices.data_descriptors import *
 from pyservices.exceptions import ModelInitException, MetaTypeException
-
+from pyservices.entity_codecs import instance_to_dict_repr
 
 # TODO refactor
 # TODO ListField of ListField not supported
 class TestDataDescriptor(unittest.TestCase):
     def setUp(self):
-        self.now = datetime.now()
+        self.now = datetime.datetime.now()
         self.title_field = StringField(name='title')
         self.content_field = StringField(name='content')
         self.date_time_field = DateTimeField(name='datetime', default=self.now)
         MetaModel.modelClasses = dict()
-        self.note_desc = MetaModel(
+        self.note_mm = MetaModel(
             'Note',
             self.title_field,
             self.content_field,
             self.date_time_field)
-        self.Note = self.note_desc.get_class()
+        self.Note = self.note_mm.get_class()
 
     def testField(self):
         self.assertRaises(TypeError, Field)
         self.assertRaises(ValueError, BooleanField, name='Title')
 
     def testDateTimeField(self):
-        dt = datetime.now()
-        try:
-            dtf = DateTimeField('date', dt)
-            dtc = MetaModel('TestDateTimeModel', dtf).get_class()
-        except ModelInitException as e:
-            self.fail(e)
+        dt = datetime.datetime.now()
+        dtf = DateTimeField('date', dt)
+        dtc = MetaModel('TestDateTimeModel', dtf).get_class()
         inst = dtc(dt)
         self.assertEqual(dt, inst.date)
         inst = dtc(dt.timestamp())
@@ -66,17 +59,14 @@ class TestDataDescriptor(unittest.TestCase):
 
     def testGeneratedClassIdempotence(self):
         self.assertIsInstance(self.Note('MyTitle'),
-                              self.note_desc.get_class())
-        self.assertEqual(self.note_desc.get_class(),
-                         self.note_desc.get_class())
+                              self.note_mm.get_class())
+        self.assertEqual(self.note_mm.get_class(),
+                         self.note_mm.get_class())
 
     def testComposedField(self):
         post_mm = MetaModel('Post', self.title_field, self.content_field)
-        try:
-            ComposedField('post', self.title_field, self.content_field)
-            ComposedField('post', self.title_field, self.content_field)
-        except ModelInitException as e:
-            self.fail(e)
+        ComposedField('post', self.title_field, self.content_field)
+        ComposedField('post', self.title_field, self.content_field)
 
     def testListField(self):
         email_mm = MetaModel('Email', StringField('address'),
@@ -86,22 +76,16 @@ class TestDataDescriptor(unittest.TestCase):
                             ListField('emails', data_type=email_mm))
 
         Email = email_mm.get_class()
-        emails = [Email('test@test.com', datetime.now()),
-                  Email('second@test.com', datetime.now())]
+        emails = [Email('test@test.com', datetime.datetime.now()),
+                  Email('second@test.com', datetime.datetime.now())]
         user_cls = user_mm.get_class()
-        try:
-            user = user_cls('UserName', ['Note1', 'Note2', 'Note3'],
-                            emails)
-        except ModelInitException as e:
-            self.fail(e)
+        user = user_cls('UserName', ['Note1', 'Note2', 'Note3'],
+                        emails)
         self.assertEqual(user.emails[0].address, emails[0].address)
         self.assertListEqual(user.notes, ['Note1', 'Note2', 'Note3'])
         self.assertRaises(ModelInitException, user_cls, 'UserName',
                           ['Note1', 1, 'Note3'], emails)
-        try:
-            user_cls('UserName', None, emails)
-        except Exception as e:
-            self.fail(e)
+        user_cls('UserName', None, emails)
 
     def testNestedSequences(self):
         # TODO not working
@@ -109,8 +93,8 @@ class TestDataDescriptor(unittest.TestCase):
         # email_mm = MetaModel('Email', StringField('address'),
         #                      DateTimeField('creation_date'))
         # Email = email_mm.get_class()
-        # emails = [Email('test@test.com', datetime.now()),
-        #           Email('second@test.com', datetime.now())]
+        # emails = [Email('test@test.com', datetime.datetime.now()),
+        #           Email('second@test.com', datetime.datetime.now())]
         # seq_seq_mm = MetaModel('Seqseq',
         #                        ListField(
         #                            'outer',
@@ -118,20 +102,14 @@ class TestDataDescriptor(unittest.TestCase):
         #                                'innter',
         #                                data_type=email_mm)))
         # SeqSeq = seq_seq_mm.get_class()
-        # try:
-        #     seq_seq = SeqSeq([emails, emails])
-        # except Exception as e:
-        #     self.fail(e)
+        # seq_seq = SeqSeq([emails, emails])
 
     def testIntegerField(self):
         number_mm = MetaModel('TwoDigitNumb',
                               IntegerField('first_digit'),
                               IntegerField('second_field'))
         Numb = number_mm.get_class()
-        try:
-            n = Numb(1, 2)
-        except Exception as e:
-            self.fail(e)
+        n = Numb(1, 2)
         self.assertRaises(ModelInitException, Numb, 'not', 'numbers')
 
     def testConditionalField(self):
@@ -173,13 +151,11 @@ class TestDataDescriptor(unittest.TestCase):
                                        color_fields)
         Palette = palette_meta_model.get_class()
 
-        try:
-            p = Palette('my_palette', {
-                'red': '#ff0000',
-                'green': '#00ff00',
-                'blue': '#0000ff'})
-        except Exception as e:
-            self.fail(e)
+        p = Palette('my_palette', {
+            'red': '#ff0000',
+            'green': '#00ff00',
+            'blue': '#0000ff'})
+
         self.assertEqual(p.colors['red'], '#ff0000')
 
     # TODO once I create the ComposedField inside the MetaModel I cannot access
@@ -205,13 +181,10 @@ class TestDataDescriptor(unittest.TestCase):
                           'not a CredentialModel type')
         user_class = user_meta_model.get_class()
         credential_class = credential_meta_model.get_class()
-        try:
-            user_instance = user_class('my_username',
-                                       'my_email',
-                                       credential_class('my_pass',
-                                                        'my_vocalFeats'))
-        except ModelInitException as e:
-            self.fail(e)
+        user_instance = user_class('my_username',
+                                   'my_email',
+                                   credential_class('my_pass',
+                                                    'my_vocalFeats'))
         self.assertIsInstance(user_instance, user_class)
         self.assertIsInstance(user_instance.credentials, credential_class)
 
@@ -231,11 +204,66 @@ class TestDataDescriptor(unittest.TestCase):
         model_c1 = MetaModel('C1', StringField('id'), primary_key_name='id')
         self.assertEqual(1, len(model_c1.fields))
 
-        model_d0 = MetaModel('D0', StringField('id0'), StringField('id1'), primary_key_name='id0')
+        model_d0 = MetaModel('D0', StringField('id0'), StringField('id1'),
+                             primary_key_name='id0')
         self.assertEqual(2, len(model_d0.fields))
 
-        model_e0 = MetaModel('E0', ComposedField('a', StringField('a'), StringField('b')))
+        model_e0 = MetaModel('E0', ComposedField('a', StringField('a'),
+                                                 StringField('b')))
         self.assertEqual(1, len(model_e0.fields))
+
+    def testSimpleFieldInitValueStrict(self):
+        int_field = IntegerField('integer_f')
+        str_field = StringField('string_f')
+        float_field = FloatField('float_f')
+        v1 = int_field.init_value('123', strict=False)
+        v2 = str_field.init_value(123, strict=False)
+        v3 = float_field.init_value('123', strict=False)
+        self.assertEqual(v1, 123)
+        self.assertEqual(v2, '123')
+        self.assertEqual(v3, 123.0)
+
+    def testMetaModelEmptyInit(self):
+        mm = MetaModel('MyEmptyNote', StringField('title'),
+                       StringField('content'), IntegerField('likes'),
+                       ComposedField('stuff', StringField('innerStuff')))
+        empty_note = mm.get_class()()
+        for field in mm.fields:
+            self.assertIsNone(getattr(empty_note, field.name))
+
+    def testPrimaryKeyValidation(self):
+        id_mm = MetaModel('Id',
+                          StringField('name'),
+                          StringField('surname'),
+                          DateTimeField('birth_date'),
+                          IntegerField('favourite_number'))
+        person_mm = MetaModel('Person', id_mm('id'), primary_key_name='id')
+        id1_repr = {
+            'name': 'MyName',
+            'surname': 'MySurname',
+            'birth_date': datetime.datetime(2019, 4, 11, 15, 37, 46, 314931),
+            'favourite_number': '42'}
+        id_validated = person_mm.validate_id(**id1_repr)
+
+        id1_repr['favourite_number'] = 42
+        for k, v in id1_repr.items():
+            self.assertEqual(getattr(id_validated, k), v)
+
+        illegal_ids = [
+            {
+                'name': 'MyName',
+                'surname': 'MySurname',
+                'birth_date': 'NOT A VALID DATE',
+                'favourite_number': '42'},
+            {
+                'name': 'MyName',
+                'surname': 'MySurname',
+                'birth_date': datetime.datetime(2019, 4, 11, 15, 37, 46, 314931)
+            }]
+        self.assertRaises(ValueError, person_mm.validate_id,
+                          **illegal_ids[0])
+        self.assertRaises(ModelInitException, person_mm.validate_id,
+                          **illegal_ids[1])
 
 
 if __name__ == '__main__':
