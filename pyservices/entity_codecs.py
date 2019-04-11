@@ -52,14 +52,12 @@ def instance_to_dict_repr(val: object):
             for k in instance_attributes(val)}
 
 
-# TODO refactor
 def dict_repr_to_instance(val: Union[dict, list], meta_model: MetaModel):
     """Recursively recreates an instance given the MetaModel.
 
     Attributes:
-        val (Union[dict, list]): The representation of the data in text form
-            with test form values
-        meta_model (type): The MetaModel used to instantiate the object
+        val (Union[dict, list]): The representation of the data in a dict form..
+        meta_model (MetaModel): The MetaModel used to instantiate the object.
     """
 
     # List of objects

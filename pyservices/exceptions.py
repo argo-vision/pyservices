@@ -1,7 +1,6 @@
 import pyservices as ps
 
 
-# TODO is it good to log exceptions?
 class PyservicesBaseException(Exception):
     """ Base exceptions for the module.
     """
@@ -29,6 +28,8 @@ class MetaTypeException(PyservicesBaseException):
 
 
 class HTTPExceptions(PyservicesBaseException):
+    """Error related to HTTP protocol.
+    """
     pass
 
 
