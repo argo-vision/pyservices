@@ -32,7 +32,7 @@ class RestClient:
     def __init__(self, service_path: str, service_class, codec: Codec):
         """ Initialize a REST client proxy.
         TODO: interfaces used to access
-        Arguments:
+        Args:
              TODO
         """
         # TODO save config ??
@@ -87,7 +87,7 @@ class RestResourceEndPoint:
         if resp.status_code == 200:
             try:
                 data = self.codec.decode(resp.content, self.meta_model)
-            except:
+            except: # TODO
                 raise RuntimeError("Cannot decode received data")
             return data
 

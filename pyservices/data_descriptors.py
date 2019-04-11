@@ -393,7 +393,7 @@ class ComposedField(Field):
     def init_value(self, value, strict: bool = True):
         """ Initialize the ComposedField.
 
-        Arguments:
+        Args:
             value: If the type is dict, the map represent the values used to
                 initialize the meta model related to the ComposedField.
             strict (bool): Flag used to perform a strict initialization.

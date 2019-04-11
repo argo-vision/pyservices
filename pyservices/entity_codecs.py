@@ -127,7 +127,7 @@ class Codec(abc.ABC):
         """Given a model object, returns its string
         representation in the http_content_type.
 
-        Arguments:
+        Args
             value (Model): A model instance.
         Returns:
             str: A string representing the model.
@@ -140,7 +140,7 @@ class Codec(abc.ABC):
         """Given a string representing the model,
         generates the model instance.
 
-        Arguments:
+        Args:
             value (str): A string representing the model instance.
             meta_model (MetaModel): A MetaModel used to create the instance.
         Returns:
