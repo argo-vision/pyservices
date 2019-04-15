@@ -3,7 +3,7 @@ import datetime
 import json
 from typing import Union
 
-from pyservices.exceptions import MetaTypeException
+from pyservices.exceptions import MetaTypeException, CodecException
 from . import http_content_types
 from .data_descriptors import MetaModel, ListField, ComposedField, \
     ConditionalField, DictField, SimpleField
@@ -131,6 +131,9 @@ class Codec(abc.ABC):
             value (Model): A model instance.
         Returns:
             str: A string representing the model.
+
+        Raises:
+            CodecException: if some errors occur.
         """
         pass
 
@@ -145,6 +148,9 @@ class Codec(abc.ABC):
             meta_model (MetaModel): A MetaModel used to create the instance.
         Returns:
             Model: The model instance.
+
+        Raises:
+            CodecException: if some errors occur.
         """
         pass
 
@@ -157,8 +163,14 @@ class JSON(Codec):
 
     @classmethod
     def encode(cls, value):
-        return json.dumps(instance_to_dict_repr(value), default=str)
+        try:
+            return json.dumps(instance_to_dict_repr(value), default=str)
+        except Exception:
+            raise CodecException('Error while encoding the data.')
 
     @classmethod
     def decode(cls, value: str, meta_model: MetaModel):
-        return dict_repr_to_instance(json.loads(value), meta_model)
+        try:
+            return dict_repr_to_instance(json.loads(value), meta_model)
+        except Exception:
+            raise CodecException('Error while decoding the data.')

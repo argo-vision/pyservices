@@ -15,7 +15,24 @@ class ModelInitException(PyservicesBaseException):
     pass
 
 
-class InterfaceDefinitionException(PyservicesBaseException):
+class CodecException(PyservicesBaseException):
+    """ Error on a Codec."""
+    pass
+
+
+class ServiceException(PyservicesBaseException):
+    """General error on Service.
+    """
+    pass
+
+
+class ClientException(ServiceException):
+    """General error on a client.
+    """
+    pass
+
+
+class InterfaceDefinitionException(ServiceException):
     """Error generating the interface of the service.
     """
     pass
@@ -27,7 +44,7 @@ class MetaTypeException(PyservicesBaseException):
     pass
 
 
-class HTTPExceptions(PyservicesBaseException):
+class HTTPExceptions(ServiceException):
     """Error related to HTTP protocol.
     """
     pass

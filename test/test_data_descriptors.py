@@ -3,6 +3,7 @@ from pyservices.data_descriptors import *
 from pyservices.exceptions import ModelInitException, MetaTypeException
 from pyservices.entity_codecs import instance_to_dict_repr
 
+
 # TODO refactor
 # TODO ListField of ListField not supported
 class TestDataDescriptor(unittest.TestCase):

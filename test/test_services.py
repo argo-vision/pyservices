@@ -4,6 +4,7 @@ import requests
 
 import pyservices as ps
 from pyservices.data_descriptors import MetaModel, StringField, IntegerField
+from pyservices.exceptions import ClientException
 from pyservices.generators import RestGenerator
 from pyservices.layer_supertypes import Service
 
@@ -183,15 +184,23 @@ class TestRestServer(unittest.TestCase):
         illegal_params = [
             {'username': 'first_account', 'friends_number': 1234},
             {'email': 'third@email.com'},
-            'username=second_account&email&second@email.com', 
-            {'fake': '0&username=second_account&email&second@email.com'}]
-        for i in range(4):
+            {'fake': '0&username=second_account&email&second@email.com'},
+            'username=second_account&email&second@email.com']
+        for i in range(2):
             try:
                 self.client_proxy.interfaces.accounts.collect(illegal_params[i])
-            except RuntimeError:
+            except ClientException:
                 continue
             else:
-                self.fail(f'{RuntimeError} is be expected.')
+                self.fail(f'{ClientException} is be expected.')
+
+        for i in range(2, 4):
+            try:
+                self.client_proxy.interfaces.accounts.collect(illegal_params[i])
+            except TypeError:
+                continue
+            else:
+                self.fail(f'{TypeError} is be expected.')
 
     def testClientGetDetail(self):
         detail = self.client_proxy.interfaces.accounts.detail(1)
@@ -209,6 +218,8 @@ class TestRestServer(unittest.TestCase):
     def testClientDelete(self):
         ret = self.client_proxy.interfaces.accounts.delete(0)
         self.assertTrue(ret)
+
+
 
 
 if __name__ == '__main__':

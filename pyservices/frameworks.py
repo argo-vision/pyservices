@@ -9,9 +9,6 @@ from pyservices.data_descriptors import ComposedField
 from pyservices.exceptions import HTTPNotFound
 
 logger = logging.getLogger(__package__)
-# TODO refactor
-# TODO work on robustness, exceptions, etc
-# TODO rename collection_ and resource_
 
 # REST Framework
 FALCON = 'falcon'
@@ -42,7 +39,7 @@ class FalconResourceGenerator:
         self.update = methods.get('update')
         self.delete = methods.get('delete')
 
-    def _collection_get(self, req, resp):
+    def _resource_collection_get(self, req, resp):
         def get_callable_collect():
             for c in self.collect:
                 try:
@@ -78,13 +75,13 @@ class FalconResourceGenerator:
         try:
             resp.body = self.codec.encode(res)
         except Exception as e:
-            logger.error("Enconding operations has failed: {}".format(e))
+            logger.error("Encoding operations has failed: {}".format(e))
             raise falcon.HTTPInternalServerError
 
         resp.status = falcon.HTTP_200
         resp.http_content_type = self.codec.http_content_type
 
-    def _collection_put(self, req, resp):
+    def _resource_collection_put(self, req, resp):
         if not self.add:
             raise falcon.HTTPForbidden
 
@@ -171,8 +168,8 @@ class FalconResourceGenerator:
     def generate(self):
         return (
             type(f'{FALCON}{self.meta_model.name}s', (object,), {
-                'on_get': self._collection_get,
-                'on_put': self._collection_put}),
+                'on_get': self._resource_collection_get,
+                'on_put': self._resource_collection_put}),
             type(f'{FALCON}{self.meta_model.name}', (object,), {
                 'on_get': self._resource_get,
                 'on_post': self._resource_post,
