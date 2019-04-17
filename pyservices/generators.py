@@ -1,8 +1,9 @@
 import hashlib
+import itertools
 import logging
+import re
 from collections import namedtuple
 from contextlib import contextmanager
-import re
 from threading import Thread
 from wsgiref import simple_server
 
@@ -213,6 +214,14 @@ class RestGenerator:
                                          for i in range(field_number)])
                     app.add_route(path, resources[0])
                     app.add_route(f'{path}/{res_path}', resources[1])
+
+                # Logging registered uris
+                registered_uris = [x.uri_template for x in app._router._roots
+                                   if x.uri_template is not None]
+                children = itertools.chain.from_iterable((x.children for x in app._router._roots))
+                registered_uris += [x.uri_template for x in children]
+                for uri in registered_uris:
+                    ps.log.info("Registered: {}".format(uri))
 
                 # TODO simple_server is temporary
                 httpd = simple_server.make_server(address, port, application,
