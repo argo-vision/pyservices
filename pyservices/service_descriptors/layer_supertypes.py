@@ -1,31 +1,19 @@
 import inspect
 
-from pyservices.interfaces import RestResource, InterfaceBase
-from pyservices.db_connectors import DBConnector
-
-
-class ServiceContext:
-    """ The context of the service.
-    """
-    def __init__(self, db_connector: DBConnector = None,
-                 # dependencies: Mapping[str, Service] = None TODO
-                 ):
-        self.db_connector = db_connector
-        # self.dependencies = dependencies
+from pyservices.service_descriptors.interfaces import RestResource, \
+    InterfaceBase
 
 
 class Service:
     """ Base class used for implementing a service.
     """
-    def __init__(self, config: dict = None, db_connector: DBConnector = None):
+    def __init__(self, config: dict = None):
         """ Initialize the service instance.
 
         Attributes:
             config (dict): The configuration of the service.
-            db_connector (DBConnector):
             TODO
         """
-        self.context = ServiceContext(db_connector=db_connector)
         self.config = config
 
         self.interface_descriptors = self._initialize_descriptors()

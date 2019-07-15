@@ -3,10 +3,13 @@ import unittest
 import requests
 
 import pyservices as ps
-from pyservices.data_descriptors import MetaModel, StringField, IntegerField
+from pyservices.data_descriptors.fields import MetaModel, StringField, \
+    IntegerField
 from pyservices.exceptions import ClientException
-from pyservices.generators import RestGenerator
-from pyservices.layer_supertypes import Service
+from pyservices.service_descriptors.generators import RestGenerator
+from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.service_descriptors.interfaces import RestResource
+from pyservices.service_descriptors.frameworks import FALCON
 
 
 # TODO refactor # test limit cases (0, 1, N)
@@ -40,13 +43,13 @@ class TestRestServer(unittest.TestCase):
 
         class AccountManager(Service):
 
-            class Note(ps.interfaces.RestResource):
+            class Note(RestResource):
                 meta_model = NoteMM
 
                 def collect(self):
                     return self.notes
 
-            class Account(ps.interfaces.RestResource):
+            class Account(RestResource):
                 meta_model = AccountMM
                 resource_path = 'accounts'  # default
                 codec = ps.JSON  # default
@@ -85,7 +88,7 @@ class TestRestServer(unittest.TestCase):
         account_manager_service = self.AccountManager({
             'address': 'localhost',
             'port': '7890',
-            'framework': ps.frameworks.FALCON,
+            'framework': FALCON,
             'service_base_path': 'account-manager'})
         RestGenerator._servers = {}
         try:

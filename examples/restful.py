@@ -27,6 +27,6 @@ class NoteService(ps.Service):
 
 
 # Generating the RESTful interface with the configured framework:
-note_gateway = ps.rest_server(NoteService, {'framework': ps.frameworks.FALCON})
+note_gateway = ps.rest_server(NoteService, {'framework': pyservices.service_descriptors.frameworks.FALCON})
 note_client = ps.rest_client(NoteService)
 

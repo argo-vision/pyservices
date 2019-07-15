@@ -4,9 +4,12 @@ import json
 from typing import Union
 
 from pyservices.exceptions import MetaTypeException, CodecException
-from . import http_content_types
-from .data_descriptors import MetaModel, ListField, ComposedField, \
-    ConditionalField, DictField, SimpleField
+from pyservices.service_descriptors import http_content_types
+from pyservices.data_descriptors.meta_model import MetaModel
+from pyservices.data_descriptors.fields import ListField, ComposedField, \
+    ConditionalField, DictField
+
+from pyservices.data_descriptors.fields import SimpleField
 
 
 def instance_attributes(inst):

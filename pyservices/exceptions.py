@@ -58,3 +58,7 @@ class HTTPUnexpectedStatusCode(HTTPExceptions):
 class HTTPNotFound(HTTPExceptions):
     def __init__(self):
         super().__init__(f'Resource not found.')
+
+
+class ComponentNotFoundException(Exception):
+    pass

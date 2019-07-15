@@ -1,10 +1,12 @@
 import unittest
 from datetime import datetime
 
-import pyservices as ps
-from pyservices.data_descriptors import MetaModel, StringField, DateTimeField, \
-    ComposedField, ListField, ConditionalField, DictField
+from pyservices.data_descriptors.fields import MetaModel, StringField, \
+    DateTimeField, ComposedField, ListField, ConditionalField, DictField
 from pyservices.exceptions import MetaTypeException
+
+from pyservices.data_descriptors.entity_codecs import JSON, \
+    dict_repr_to_instance, instance_to_dict_repr, instance_attributes
 
 
 # TODO refactor
@@ -62,12 +64,12 @@ class TestUtils(unittest.TestCase):
             'username': 'MyUsername'}
 
     def test_instance_attributes(self):
-        attributes = ps.entity_codecs.instance_attributes(self.user_instance)
+        attributes = instance_attributes(self.user_instance)
         self.assertListEqual(attributes, ['address', 'credentials',
                                           'last_access', 'username'])
 
     def test_dict_repr_to_instance(self):
-        user_instance = ps.entity_codecs.dict_repr_to_instance(
+        user_instance = dict_repr_to_instance(
             self.user_dict, self.user_meta_model)
         self.assertIsInstance(user_instance, self.user_meta_model.get_class())
         self.assertIsInstance(user_instance.credentials,
@@ -79,7 +81,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(user_instance.address.city, 'my_city')
 
     def test_dict_repr_to_instance_sequence_field(self):
-        instance = ps.entity_codecs.dict_repr_to_instance(
+        instance = dict_repr_to_instance(
             self.user_ma_repr, self.user_multiple_addresses_mm)
         self.assertEqual(instance.addresses[0].city, 'MyCity')
         self.assertEqual(instance.addresses[1].postal_code, '53102')
@@ -90,11 +92,11 @@ class TestUtils(unittest.TestCase):
             'now_a_valid_key': {}
         }
         self.assertRaises(MetaTypeException,
-                          ps.entity_codecs.dict_repr_to_instance,
+                          dict_repr_to_instance,
                           bad_dict, self.user_meta_model)
 
     def test_instance_to_dict_repr(self):
-        user_dict = ps.entity_codecs.instance_to_dict_repr(self.user_instance)
+        user_dict = instance_to_dict_repr(self.user_instance)
         self.assertEqual(user_dict['credentials']['password'],
                          'my_password')
         self.assertEqual(user_dict['address']['city'],
@@ -103,7 +105,7 @@ class TestUtils(unittest.TestCase):
                          'my_username')
 
     def test_instance_to_dict_repr_sequence_field(self):
-        instance_dict = ps.entity_codecs.instance_to_dict_repr(self.user_ma)
+        instance_dict = instance_to_dict_repr(self.user_ma)
         self.assertEqual(instance_dict['addresses'][0]['city'], 'MyCity')
         self.assertEqual(instance_dict['addresses'][1]['postal_code'], '53102')
 
@@ -138,9 +140,9 @@ class TestUtils(unittest.TestCase):
                                       connector_type='second')
 
         try:
-            fa_repr = ps.entity_codecs.instance_to_dict_repr(
+            fa_repr = instance_to_dict_repr(
                 first_type_account)
-            sa_repr = ps.entity_codecs.instance_to_dict_repr(
+            sa_repr = instance_to_dict_repr(
                 second_type_account)
         except Exception as e:
             self.fail(e)
@@ -196,10 +198,8 @@ class TestUtils(unittest.TestCase):
             "email": "my@email.com"}
 
         try:
-            fta = ps.entity_codecs.dict_repr_to_instance(first_account_repr,
-                                                    account)
-            sta = ps.entity_codecs.dict_repr_to_instance(second_account_repr,
-                                                    account)
+            fta = dict_repr_to_instance(first_account_repr, account)
+            sta = dict_repr_to_instance(second_account_repr, account)
         except Exception as e:
             self.fail(e)
         self.assertEqual(fta.connector.app_id,
@@ -216,7 +216,7 @@ class TestUtils(unittest.TestCase):
             'colors': {
                 'red': '#ff0000',
                 'green': '#00ff00',
-                'blue': '#0000ff' },
+                'blue': '#0000ff'},
             'name': 'my_palette'}
 
         try:
@@ -227,7 +227,7 @@ class TestUtils(unittest.TestCase):
         except Exception as e:
             self.fail(e)
 
-        repr_v = ps.entity_codecs.instance_to_dict_repr(p)
+        repr_v = instance_to_dict_repr(p)
         self.assertDictEqual(obj_repr, repr_v)
 
     def test_instance_to_dict_repr_dict_field(self):
@@ -240,7 +240,7 @@ class TestUtils(unittest.TestCase):
                 'green': '#00ff00',
                 'blue': '#0000ff'},
             'name': 'my_palette'}
-        instace = ps.entity_codecs.dict_repr_to_instance(obj_repr, palette_meta_model)
+        instace = dict_repr_to_instance(obj_repr, palette_meta_model)
         self.assertEqual(instace.colors['red'], '#ff0000')
 
 
@@ -255,7 +255,7 @@ class TestJSON(unittest.TestCase):
                          'ord", "vocal_features": "myVocalFeatures"}, "last_a' \
                          'ccess": "2019-02-21T16:03:52.147559", "username": "' \
                          'my_username"}'
-        self.codec = ps.entity_codecs.JSON()
+        self.codec = JSON
 
         MetaModel.modelClasses = dict()
         self.address_meta_model = MetaModel(
