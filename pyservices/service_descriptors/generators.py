@@ -1,6 +1,6 @@
+# TODO refactor imports
 import hashlib
 import itertools
-import logging
 import re
 from collections import namedtuple
 from contextlib import contextmanager
@@ -10,14 +10,13 @@ from wsgiref import simple_server
 import falcon
 import requests
 
+# TODO refactor imports
 import pyservices as ps
-from pyservices.entity_codecs import Codec, JSON
+from pyservices.data_descriptors.entity_codecs import Codec, JSON
 from pyservices.exceptions import ServiceException, ClientException
-from pyservices.frameworks import FalconResourceGenerator, FALCON
-from pyservices.interfaces import RestResource
-from pyservices.layer_supertypes import Service
-
-logger = logging.getLogger(__package__)
+from pyservices.service_descriptors.frameworks import FalconResourceGenerator, FALCON
+from pyservices.service_descriptors.interfaces import RestResource
+from pyservices.service_descriptors.layer_supertypes import Service
 
 
 class RestClient:

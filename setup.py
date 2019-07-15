@@ -11,7 +11,7 @@ setuptools.setup(
     description="Pyservices",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=['pyservices'],
+    packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",

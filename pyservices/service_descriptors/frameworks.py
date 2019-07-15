@@ -4,8 +4,8 @@ import logging
 
 import falcon
 
-from pyservices import entity_codecs
-from pyservices.data_descriptors import ComposedField
+from pyservices.data_descriptors.fields import ComposedField
+from pyservices.data_descriptors.entity_codecs import JSON
 from pyservices.exceptions import HTTPNotFound
 
 logger = logging.getLogger(__package__)
@@ -25,7 +25,7 @@ class FalconResourceGenerator:
                 Falcon Resources are generated
         """
         self.meta_model = iface.meta_model
-        self.codec = iface.codec or entity_codecs.JSON
+        self.codec = iface.codec or JSON
 
         methods = {name_method[0]: name_method[1]
                    for name_method in inspect.getmembers(

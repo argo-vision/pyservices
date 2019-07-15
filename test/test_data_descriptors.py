@@ -1,7 +1,5 @@
 import unittest
-from pyservices.data_descriptors import *
-from pyservices.exceptions import ModelInitException, MetaTypeException
-from pyservices.entity_codecs import instance_to_dict_repr
+from pyservices.data_descriptors.fields import *
 
 
 # TODO refactor

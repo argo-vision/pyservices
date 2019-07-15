@@ -1,6 +1,7 @@
 import abc
 
-from pyservices import JSON
+# TODO make a module
+from pyservices.data_descriptors.entity_codecs import JSON
 
 
 class InterfaceBase(abc.ABC):
