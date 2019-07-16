@@ -1,25 +1,39 @@
 import abc
+import functools
+import inspect
+
 
 # TODO make a module
 from pyservices.data_descriptors.entity_codecs import JSON
 
 
 class InterfaceBase(abc.ABC):
-    """Base class of interfaces.
+    """Base class of interfaces. InterfaceBase subclasses describe interfaces.
+    They are initialization and implementation independent.
 
     The methods of the class can be overloaded in a service implementation.
     """
+    if_path = None
 
     def __init__(self, service):
         self.service = service
 
 
-class RestResource(InterfaceBase):
-    """Restful interface of a single Resource.
+class HTTPInterface(InterfaceBase):
+    """Abstract HTTP interface.
+
+    """
+
+    @classmethod
+    def _get_endpoint_name(cls):
+        return cls.if_path
+
+
+class RestResourceInterface(HTTPInterface):
+    """Restful interface of a single REST resource.
 
     """
     meta_model = None
-    resource_path = None
     codec = JSON
 
     def collect(self):
@@ -92,10 +106,36 @@ class RestResource(InterfaceBase):
         pass
 
     @classmethod
-    def get_resource_name(cls):
-        return cls.resource_path or f'{cls.meta_model.name.lower()}s'
+    def _get_endpoint_name(cls):
+        return cls.if_path or f'{cls.meta_model.name.lower()}s'
 
 
-class MessageInterface(InterfaceBase):
-    # TODO
-    pass
+class RPCInterface(HTTPInterface):
+    """RPC interface used to perform remote procedure calls.
+    TODO is this too abstract for a RPC?
+    """
+
+    # TODO refactor and generalize
+    @classmethod
+    def _get_RPCs(cls):
+        return [
+            method[1]
+            for method in inspect.getmembers(
+                cls, lambda m: inspect.isfunction(m)) if not method[0].startswith('_')
+        ]
+
+
+def HTTPOperation(method='get', path=None):
+    """
+    Decorator for HTTP operations
+    TODO method required, path not required?
+    TODO checks on params
+    """
+    def HTTP_decorator(func):
+        @functools.wraps(func)
+        def wrapped_http_operation(req, res):
+            func(req, res)
+        wrapped_http_operation.http_method = method.lower()
+        wrapped_http_operation.path = path or func.__name__
+        return wrapped_http_operation
+    return HTTP_decorator

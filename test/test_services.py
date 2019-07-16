@@ -3,118 +3,106 @@ import unittest
 import requests
 
 import pyservices as ps
-from pyservices.data_descriptors.fields import MetaModel, StringField, \
-    IntegerField
 from pyservices.exceptions import ClientException
-from pyservices.service_descriptors.generators import RestGenerator
 from pyservices.service_descriptors.layer_supertypes import Service
-from pyservices.service_descriptors.interfaces import RestResource
-from pyservices.service_descriptors.frameworks import FALCON
+from pyservices.service_descriptors.interfaces import HTTPOperation
+from pyservices.service_descriptors.generators import RestGenerator
+from pyservices.service_descriptors.interfaces import *
+from test.meta_models import *
+
+base_path = 'http://localhost:7890/account-manager'
 
 
-# TODO refactor # test limit cases (0, 1, N)
+class AccountManager(Service):
+    service_base_path = 'account-manager'
+
+    class Note(RestResourceInterface):
+        meta_model = NoteMM
+
+        def collect(self):
+            return notes
+
+    class Account(RestResourceInterface):
+        meta_model = AccountMM
+        if_path = 'account-interface'  # not default behaviour
+
+        def collect(self):
+            return accounts
+
+        def collect_username(self, username=None):
+            return [a for a in accounts
+                    if a.username == username]
+
+        def collect_username_email(self, username, email=None):
+            return [a for a in accounts
+                    if a.username == username and a.email == email]
+
+        def collect_friends(self, friends_number=None):
+            return [a for a in accounts
+                    if a.friends_number > int(friends_number)]
+
+        def detail(self, res_id):
+            return accounts[int(res_id)]
+
+        def add(self, account):
+            res_id = '123'
+            assert type(account) is Account
+            return res_id
+
+        def update(self, res_id, account):
+            assert type(res_id) is int
+            assert type(account) is Account
+
+        def delete(self, res_id):
+            assert type(res_id) is int
+
+    # TODO think to some tests
+    class NotesOperations(RPCInterface):
+        if_path = 'notes-operations'
+
+        @HTTPOperation(method='GET', path='read-note')
+        def readnote(self, req, res):
+            # give some flexibility with req e res? TODO I1
+            # res.body = f'{note.title - note.content}'  # TODO I1
+            pass
+
+        @HTTPOperation(method='POST')
+        def randomnote(self, req, res):
+            pass
+
+        def _get_note(self, note_id):
+            return notes[note_id]
+
+
 class TestRestServer(unittest.TestCase):
 
     def setUp(self):
-        MetaModel.modelClasses = {}
-        self.note_mm = NoteMM = MetaModel('Note',
-                                          StringField('title'),
-                                          StringField('content'),
-                                          primary_key_name='title')
-        self.account_mm = AccountMM = MetaModel('Account',
-                                                StringField('username'),
-                                                StringField('email'),
-                                                IntegerField('friends_number'),
-                                                IntegerField('id'),
-                                                primary_key_name='id')
-        account_cls = self.account_mm.get_class()
-        self.user_mm = UserMM = MetaModel('User',
-                                          StringField('username'),
-                                          self.account_mm())
-        self.accounts = accounts = [
-            account_cls('first_account', 'first@email.com', 2314, 1),
-            account_cls('second_account', 'second@email.com', 5443, 2),
-            account_cls('second_account', 'second223@email.com', 5443, 3),
-            account_cls('third_account', 'third@email.com', 34125, 4)]
-        self.users = users = [self.user_mm.get_class()('first_user',
-                                                       self.accounts[0])]
-        self.notes = notes = [
-            NoteMM.get_class()('FirstTitle', 'Content1234')]
-
-        class AccountManager(Service):
-
-            class Note(RestResource):
-                meta_model = NoteMM
-
-                def collect(self):
-                    return self.notes
-
-            class Account(RestResource):
-                meta_model = AccountMM
-                resource_path = 'accounts'  # default
-                codec = ps.JSON  # default
-
-                def collect(self):
-                    return accounts
-
-                def collect_username(self, username=None):
-                    return [a for a in accounts
-                            if a.username == username]
-
-                def collect_username_email(self, username, email=None):
-                    return [a for a in accounts
-                            if a.username == username and a.email == email]
-
-                def collect_friends(self, friends_number=None):
-                    return [a for a in accounts
-                            if a.friends_number > int(friends_number)]
-
-                def detail(self, res_id):
-                    return accounts[int(res_id)]
-
-                def add(self, account):
-                    res_id = '123'
-                    accounts.append(account)
-                    return res_id
-
-                def update(self, res_id, account):
-                    del accounts[int(res_id)]
-                    accounts.append(account)
-
-                def delete(self, res_id):
-                    del accounts[int(res_id)]
-
-        self.AccountManager = AccountManager
-        account_manager_service = self.AccountManager({
+        self.account_manager_service = AccountManager({
             'address': 'localhost',
             'port': '7890',
-            'framework': FALCON,
+            'framework': ps.frameworks.FALCON,
             'service_base_path': 'account-manager'})
-        RestGenerator._servers = {}
         try:
-            self.thread, self.httpd = RestGenerator.generate_rest_server(
-                account_manager_service)
+            self.account_manager_service.start()
             self.client_proxy = RestGenerator.get_client_proxy(
                 'localhost', '7890', 'account-manager', AccountManager)
         except Exception as e:
             self.fail(e)
 
     def tearDown(self):
-        self.httpd.shutdown()
-        self.httpd.server_close()
-        self.thread.join()
+        self.account_manager_service.stop()
 
-    def testRESTGetResource(self):
+    def testHTTPGetResource(self):
         resp = requests.get(
-            'http://localhost:7890/account-manager/accounts/1')
+            'http://localhost:7890/account-manager/account-interface/1')
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.text,
                          '{"email": "second@email.com", "friends_number": 5443,'
                          ' "id": 2, "username": "second_account"}')
 
-    def testRESTGetResources(self):
+    def testHTTPGetResources(self):
         resp = requests.get(
-            'http://localhost:7890/account-manager/accounts')
+            'http://localhost:7890/account-manager/account-interface')
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.text, '[{"email": "first@email.com", "friends_numb'
                                     'er": 2314, "id": 1, "username": "first_ac'
@@ -127,32 +115,39 @@ class TestRestServer(unittest.TestCase):
                                     ' 34125, "id": 4, "username": "third_accou'
                                     'nt"}]')
 
-    def testRESTAddResource(self):
+    def testHTTPAddResource(self):
         str_account = '{"email" : "new@email.com","username" : "new account",' \
                       ' "friends_number": 1234}'
-        resp = requests.put('http://localhost:7890/account-manager/accounts/',
+        resp = requests.put(base_path + '/account-interface/',
                             str_account.encode())
         self.assertEqual(resp.status_code, 201)
 
-    def testRESTUpdateResource(self):
+    def testHTTPUpdateResource(self):
         str_account = '{"email" : "ed@email.com","username" : "edited account' \
                       '", "friends_number": 231}'
-        resp = requests.post('http://localhost:7890/account-manager/accounts/1',
+        resp = requests.post(base_path + '/account-interface/1',
                              str_account.encode())
         self.assertEqual(resp.status_code, 200)
 
-    def testRESTDeleteResource(self):
+    def testHTTPDeleteResource(self):
         resp = requests.delete(
-            'http://localhost:7890/account-manager/accounts/1')
+            base_path + '/account-interface/1')
         self.assertEqual(resp.status_code, 200)
 
-    def testClientGetCollection(self):
-        coll = self.client_proxy.interfaces.accounts.collect()
-        # TODO len
-        for el in coll:
-            self.assertTrue(isinstance(el, self.account_mm.get_class()))
+    def testHTTPRPC(self):
+        resp = requests.post(base_path + '/notes-operations/randomnote')
+        # self.assertRaises(resp.json())  # TODO discuss type negotiation, test data I1
+        self.assertEqual(resp.status_code, 200)
+        resp = requests.get(base_path + '/notes-operations/read-note')
+        # self.assertRaises(resp.json())  # TODO discuss type negotiation, test data I1
+        self.assertEqual(resp.status_code, 200)
 
-    def testClientGetCollectionValidParams(self):
+    def testClientResourceGetCollection(self):
+        coll = self.client_proxy.interfaces.REST.account_interface.collect()
+        for el in coll:
+            self.assertTrue(isinstance(el, Account))
+
+    def testClientResourceGetCollectionValidParams(self):
         valid_params = [
             {},  # match 0,1,3
             {'username': 'second_account'},  # match 1,2
@@ -160,30 +155,30 @@ class TestRestServer(unittest.TestCase):
             {'friends_number': 5443},  # match 3
             {'username': 'not_an_existent_username'},
             {'friends_number': 999999999}]
-        coll = self.client_proxy.interfaces.accounts.collect(valid_params[0])
+        coll = self.client_proxy.interfaces.REST.account_interface.collect(valid_params[0])
         self.assertEqual(len(coll), 4)
 
-        coll = self.client_proxy.interfaces.accounts.collect(valid_params[1])
+        coll = self.client_proxy.interfaces.REST.account_interface.collect(valid_params[1])
         self.assertEqual(len(coll), 2)
         for a in coll:
             self.assertEqual(a.username, 'second_account')
 
-        coll = self.client_proxy.interfaces.accounts.collect(valid_params[2])
+        coll = self.client_proxy.interfaces.REST.account_interface.collect(valid_params[2])
         self.assertEqual(len(coll), 1)
         self.assertEqual(coll[0].email, 'second@email.com')
 
-        coll = self.client_proxy.interfaces.accounts.collect(valid_params[3])
+        coll = self.client_proxy.interfaces.REST.account_interface.collect(valid_params[3])
         self.assertEqual(len(coll), 1)
         for a in coll:
             self.assertGreaterEqual(a.friends_number, 5443)
 
-        coll = self.client_proxy.interfaces.accounts.collect(valid_params[4])
+        coll = self.client_proxy.interfaces.REST.account_interface.collect(valid_params[4])
         self.assertEqual(len(coll), 0)
 
-        coll = self.client_proxy.interfaces.accounts.collect(valid_params[5])
+        coll = self.client_proxy.interfaces.REST.account_interface.collect(valid_params[5])
         self.assertEqual(len(coll), 0)
 
-    def testClientGetCollectionInvalidParams(self):
+    def testClientResourceGetCollectionInvalidParams(self):
         illegal_params = [
             {'username': 'first_account', 'friends_number': 1234},
             {'email': 'third@email.com'},
@@ -191,7 +186,7 @@ class TestRestServer(unittest.TestCase):
             'username=second_account&email&second@email.com']
         for i in range(2):
             try:
-                self.client_proxy.interfaces.accounts.collect(illegal_params[i])
+                self.client_proxy.interfaces.REST.account_interface.collect(illegal_params[i])
             except ClientException:
                 continue
             else:
@@ -199,30 +194,36 @@ class TestRestServer(unittest.TestCase):
 
         for i in range(2, 4):
             try:
-                self.client_proxy.interfaces.accounts.collect(illegal_params[i])
+                self.client_proxy.interfaces.REST.account_interface.collect(illegal_params[i])
             except TypeError:
                 continue
             else:
                 self.fail(f'{TypeError} is be expected.')
 
-    def testClientGetDetail(self):
-        detail = self.client_proxy.interfaces.accounts.detail(1)
-        self.assertTrue(isinstance(detail, self.account_mm.get_class()))
+    def testClientResourceGetDetail(self):
+        detail = self.client_proxy.interfaces.REST.account_interface.detail(1)
+        self.assertTrue(isinstance(detail, Account))
 
-    def testClientAdd(self):
-        res_id = self.client_proxy.interfaces.accounts.add(self.accounts[1])
+    def testClientResourceAdd(self):
+        res_id = self.client_proxy.interfaces.REST.account_interface.add(accounts[1])
         self.assertEqual(res_id, '123')
 
-    def testClientUpdate(self):
-        ret = self.client_proxy.interfaces.accounts.update(
-            0, self.accounts[1])
+    def testClientResourceUpdate(self):
+        ret = self.client_proxy.interfaces.REST.account_interface.update(
+            0, accounts[1])
         self.assertTrue(ret)
 
-    def testClientDelete(self):
-        ret = self.client_proxy.interfaces.accounts.delete(0)
+    def testClientResourceDelete(self):
+        ret = self.client_proxy.interfaces.REST.account_interface.delete(0)
         self.assertTrue(ret)
 
+    def testClientRPC(self):
+        ret = self.client_proxy.interfaces.RPC.notes_operations.read_note()
+        self.assertTrue(ret)
+        ret = self.client_proxy.interfaces.RPC.notes_operations.randomnote()
+        self.assertTrue(ret)
 
+        # self.assertRaises(ret.data())  # TODO discuss type negotiation, test data I1
 
 
 if __name__ == '__main__':

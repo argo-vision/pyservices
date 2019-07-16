@@ -1,25 +1,16 @@
 import unittest
-from datetime import datetime
 
-from pyservices.data_descriptors.fields import MetaModel, StringField, \
-    DateTimeField, ComposedField, ListField, ConditionalField, DictField
+import pyservices as ps
+from pyservices.data_descriptors.entity_codecs import *
 from pyservices.exceptions import MetaTypeException
-
-from pyservices.data_descriptors.entity_codecs import JSON, \
-    dict_repr_to_instance, instance_to_dict_repr, instance_attributes
+from test.meta_models import *
 
 
-# TODO refactor
 class TestUtils(unittest.TestCase):
 
     def setUp(self):
-        self.user_instance = User('my_username', datetime.now(),
-                                  'my_password', 'myVocalFeatures',
-                                  'my_city', 'my_postalCode')
-        self.users = [self.user_instance for _ in range(5)]
-
-        self.user_dict = {
-            'username': 'my_username',
+        self.person_dict = {
+            'person_name': 'my_person_name',
             'last_access': datetime.now(),
             'credentials': {
                 'password': 'my_password',
@@ -30,115 +21,60 @@ class TestUtils(unittest.TestCase):
                 'postal_code': 'my_postal_code'
             }
         }
-        MetaModel.modelClasses = dict()
-        self.address_meta_model = MetaModel(
-            'Address',
-            StringField('city'),
-            StringField('postal_code'))
-        self.user_meta_model = MetaModel(
-            'User',
-            StringField('username'),
-            DateTimeField('last_access'),
-            ComposedField('credentials',
-                          StringField('password'),
-                          StringField('vocal_features')),
-            self.address_meta_model())
-        self.user_multiple_addresses_mm = MetaModel(
-            'UserMA', StringField('username'),
-            DateTimeField('last_access'),
-            ListField('addresses', data_type=self.address_meta_model)
-        )
-
-        self.addresses = [
-            self.address_meta_model.get_class()('MyCity', '44444'),
-            self.address_meta_model.get_class()('MySecondCity', '53102')]
-
-        self.user_ma = self.user_multiple_addresses_mm.get_class()(
-            'MyUsername', datetime.now(), self.addresses
-        )
-        self.user_ma_repr = {
+        self.person_ma_repr = {
             'addresses': [
                 {'city': 'MyCity', 'postal_code': '44444'},
                 {'city': 'MySecondCity', 'postal_code': '53102'}],
             'last_access': datetime(2019, 3, 9, 0, 33, 6, 386788),
-            'username': 'MyUsername'}
+            'person_name': 'MyPersonname'}
 
     def test_instance_attributes(self):
-        attributes = instance_attributes(self.user_instance)
+        attributes = instance_attributes(Person())
         self.assertListEqual(attributes, ['address', 'credentials',
-                                          'last_access', 'username'])
+                                          'last_access', 'person_name'])
 
     def test_dict_repr_to_instance(self):
-        user_instance = dict_repr_to_instance(
-            self.user_dict, self.user_meta_model)
-        self.assertIsInstance(user_instance, self.user_meta_model.get_class())
-        self.assertIsInstance(user_instance.credentials,
-                              self.user_meta_model.fields[2].get_class())
-        self.assertIsInstance(user_instance.address,
-                              self.address_meta_model.get_class())
-        self.assertEqual(user_instance.username, 'my_username')
-        self.assertEqual(user_instance.credentials.password, 'my_password')
-        self.assertEqual(user_instance.address.city, 'my_city')
+        person_instance = dict_repr_to_instance(
+            self.person_dict, PersonMM)
+        self.assertIsInstance(person_instance, Person)
+        self.assertIsInstance(person_instance.credentials, Credentials)
+        self.assertIsInstance(person_instance.address, Address)
+        self.assertEqual(person_instance.person_name, 'my_person_name')
+        self.assertEqual(person_instance.credentials.password, 'my_password')
+        self.assertEqual(person_instance.address.city, 'my_city')
 
     def test_dict_repr_to_instance_sequence_field(self):
         instance = dict_repr_to_instance(
-            self.user_ma_repr, self.user_multiple_addresses_mm)
+            self.person_ma_repr, PersonMultipleAddressMM)
         self.assertEqual(instance.addresses[0].city, 'MyCity')
         self.assertEqual(instance.addresses[1].postal_code, '53102')
 
     def test_dict_repr_to_instance_bad_usage(self):
         bad_dict = {
-            'username': 'my_username',
+            'person_name': 'my_person_name',
             'now_a_valid_key': {}
         }
         self.assertRaises(MetaTypeException,
                           dict_repr_to_instance,
-                          bad_dict, self.user_meta_model)
+                          bad_dict, PersonMM)
 
     def test_instance_to_dict_repr(self):
-        user_dict = instance_to_dict_repr(self.user_instance)
-        self.assertEqual(user_dict['credentials']['password'],
+        person_dict = instance_to_dict_repr(
+            Person('my_person_name', datetime.now(),
+                   Credentials('my_password', 'secret'), addresses[0]))
+        self.assertEqual(person_dict['credentials']['password'],
                          'my_password')
-        self.assertEqual(user_dict['address']['city'],
-                         'my_city')
-        self.assertEqual(user_dict['username'],
-                         'my_username')
+        self.assertEqual(person_dict['address']['city'],
+                         'MyCity')
+        self.assertEqual(person_dict['person_name'],
+                         'my_person_name')
 
     def test_instance_to_dict_repr_sequence_field(self):
-        instance_dict = instance_to_dict_repr(self.user_ma)
+        instance_dict = instance_to_dict_repr(person_ma)
         self.assertEqual(instance_dict['addresses'][0]['city'], 'MyCity')
         self.assertEqual(instance_dict['addresses'][1]['postal_code'], '53102')
 
     def test_instance_to_dict_repr_conditional_field(self):
-        access = ComposedField('access', StringField('secret'),
-                               StringField('service'))
-        first_connector = MetaModel('First_connector', StringField('app_id'),
-                                    StringField('token'), StringField('secret'))
-        second_connector = MetaModel('Second_connector', StringField('token'),
-                                     access)
-        connector = ConditionalField('connector', {
-            'first': first_connector,
-            'second': second_connector}, evaluation_field_name='connector_type')
-
-        account = MetaModel('Account', StringField('email'),
-                            connector, StringField('connector_type'))
-
-        Access = access.meta_model.get_class()
-        Account = account.get_class()
-        first_conn_auth = first_connector.get_class()('my_app_id',
-                                                      'my_token',
-                                                      'my_secret')
-
-        second_conn_auth = second_connector.get_class()('token',
-                                                        Access('my_secret',
-                                                               'my_service'))
-
-        first_type_account = Account('my@email.com', first_conn_auth,
-                                     connector_type='first')
-
-        second_type_account = Account('my@email.com', second_conn_auth,
-                                      connector_type='second')
-
         try:
             fa_repr = instance_to_dict_repr(
                 first_type_account)
@@ -151,35 +87,6 @@ class TestUtils(unittest.TestCase):
                          'my_secret')
 
     def test_dict_repr_to_instance_conditional_field(self):
-        access = ComposedField('access', StringField('secret'),
-                               StringField('service'))
-        first_connector = MetaModel('First_connector', StringField('app_id'),
-                                    StringField('token'), StringField('secret'))
-        second_connector = MetaModel('Second_connector', StringField('token'),
-                                     access)
-        connector = ConditionalField('connector', {
-            'first': first_connector,
-            'second': second_connector}, evaluation_field_name='connector_type')
-
-        account = MetaModel('Account', StringField('email'),
-                            connector, StringField('connector_type'))
-
-        Access = access.meta_model.get_class()
-        Account = account.get_class()
-        first_conn_auth = first_connector.get_class()('my_app_id',
-                                                      'my_token',
-                                                      'my_secret')
-
-        second_conn_auth = second_connector.get_class()('token',
-                                                        Access('my_secret',
-                                                               'my_service'))
-
-        first_type_account = Account('my@email.com', first_conn_auth,
-                                     connector_type='first')
-
-        second_type_account = Account('my@email.com', second_conn_auth,
-                                      connector_type='second')
-
         first_account_repr = {
             "connector": {
                 "app_id": "my_app_id",
@@ -198,8 +105,9 @@ class TestUtils(unittest.TestCase):
             "email": "my@email.com"}
 
         try:
-            fta = dict_repr_to_instance(first_account_repr, account)
-            sta = dict_repr_to_instance(second_account_repr, account)
+            fta = dict_repr_to_instance(first_account_repr, AccountConnectorsMM)
+            sta = dict_repr_to_instance(second_account_repr,
+                                        AccountConnectorsMM)
         except Exception as e:
             self.fail(e)
         self.assertEqual(fta.connector.app_id,
@@ -208,17 +116,6 @@ class TestUtils(unittest.TestCase):
                          second_type_account.connector.access.service)
 
     def test_dict_repr_to_instance_dict_field(self):
-        color_fields = DictField('colors')
-        palette_meta_model = MetaModel('Palette', StringField('name'),
-                                       color_fields)
-        Palette = palette_meta_model.get_class()
-        obj_repr = {
-            'colors': {
-                'red': '#ff0000',
-                'green': '#00ff00',
-                'blue': '#0000ff'},
-            'name': 'my_palette'}
-
         try:
             p = Palette('my_palette', {
                 'red': '#ff0000',
@@ -231,74 +128,27 @@ class TestUtils(unittest.TestCase):
         self.assertDictEqual(obj_repr, repr_v)
 
     def test_instance_to_dict_repr_dict_field(self):
-        color_fields = DictField('colors')
-        palette_meta_model = MetaModel('Palette', StringField('name'),
-                                       color_fields)
-        obj_repr = {
-            'colors': {
-                'red': '#ff0000',
-                'green': '#00ff00',
-                'blue': '#0000ff'},
-            'name': 'my_palette'}
-        instace = dict_repr_to_instance(obj_repr, palette_meta_model)
-        self.assertEqual(instace.colors['red'], '#ff0000')
+        instance = dict_repr_to_instance(obj_repr, PaletteMM)
+        self.assertEqual(instance.colors['red'], '#ff0000')
 
 
 class TestJSON(unittest.TestCase):
 
     def setUp(self):
-        self.user_instance = User('my_username', '2019-02-21T16:03:52.147559',
-                                  'my_password', 'myVocalFeatures',
-                                  'my_city', 'my_postalCode')
-        self.user_json = '{"address": {"city": "my_city", "postal_code": "my_' \
-                         'postalCode"}, "credentials": {"password": "my_passw' \
-                         'ord", "vocal_features": "myVocalFeatures"}, "last_a' \
-                         'ccess": "2019-02-21T16:03:52.147559", "username": "' \
-                         'my_username"}'
+        self.person_instance = Person('my_person_name',
+                                      '2019-02-21T16:03:52.147559',
+                                      Credentials('super', 'secrets'),
+                                      addresses[0])
+        self.person_json = '{"address": {"city": "MyCity", "postal_code": "44444"}, "credentials": {"password": "super", "vocal_features": "secrets"}, "last_access": "2019-02-21 16:03:52.147559", "person_name": "my_person_name"}'
         self.codec = JSON
 
-        MetaModel.modelClasses = dict()
-        self.address_meta_model = MetaModel(
-            'Address',
-            StringField('city'),
-            StringField('postal_code'))
-        self.user_meta_model = MetaModel(
-            'User',
-            StringField('username'),
-            DateTimeField('last_access'),
-            ComposedField('credentials',
-                          StringField('password'),
-                          StringField('vocal_features')),
-            self.address_meta_model())
-
     def test_decode(self):
-        instance_json = self.codec.encode(self.user_instance)
-        self.assertEqual(instance_json, self.user_json)
+        instance_json = self.codec.encode(self.person_instance)
+        self.assertEqual(instance_json, self.person_json)
 
     def test_encode(self):
-        user = self.codec.decode(self.user_json, self.user_meta_model)
-        self.assertEqual(user.address.city, 'my_city')
-
-
-class Address:
-    def __init__(self, city, postal_code):
-        self.city = city
-        self.postal_code = postal_code
-
-
-class Credentials:
-    def __init__(self, password, vocal_features):
-        self.password = password
-        self.vocal_features = vocal_features
-
-
-class User:
-    def __init__(self, username, last_access, password,
-                 vocal_features, city, postal_code):
-        self.username = username
-        self.last_access = last_access
-        self.credentials = Credentials(password, vocal_features)
-        self.address = Address(city, postal_code)
+        person = self.codec.decode(self.person_json, PersonMM)
+        self.assertEqual(person.address.city, 'MyCity')
 
 
 if __name__ == '__main__':
