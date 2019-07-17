@@ -1,8 +1,7 @@
 import unittest
 
-import pyservices as ps
 from pyservices.data_descriptors.entity_codecs import *
-from pyservices.exceptions import MetaTypeException
+from pyservices.utilities.exceptions import MetaTypeException
 from test.meta_models import *
 
 

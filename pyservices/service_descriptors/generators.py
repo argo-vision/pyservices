@@ -1,22 +1,14 @@
-import hashlib
-import itertools
 import logging
 import re
 from collections import namedtuple
 from contextlib import contextmanager
-from threading import Thread
-from wsgiref import simple_server
 
-import falcon
 import requests
 
-import pyservices as ps
-from pyservices.data_descriptors.entity_codecs import Codec, JSON, \
-    instance_to_dict_repr
-from pyservices.exceptions import ServiceException, ClientException
-from pyservices.service_descriptors.frameworks import FALCON
+from pyservices.data_descriptors.entity_codecs import Codec, JSON
+from pyservices.utilities.exceptions import ServiceException, ClientException
 from pyservices.service_descriptors.layer_supertypes import Service
-from pyservices.service_descriptors.interfaces import HTTPInterface, RPCInterface, RestResourceInterface
+from pyservices.service_descriptors.interfaces import RPCInterface, RestResourceInterface
 
 logger = logging.getLogger(__package__)
 
@@ -206,11 +198,10 @@ class RestGenerator:
 
     @classmethod
     def get_client_proxy(cls, service_address: str, service_port: str,
-                         service_base_path: str, service_class,
-                         codec: Codec = JSON) -> HTTPClient:
+                         service_class, codec: Codec = JSON) -> HTTPClient:
         """ Method used to generate a REST client.
         """
         service_path = f'http://{service_address}:{service_port}/' \
-            f'{service_base_path}'
+            f'{service_class.service_base_path}'
         client = HTTPClient(service_path, service_class, codec)
         return client

@@ -4,13 +4,22 @@ import itertools
 import logging
 
 import falcon
+from threading import Thread
+from wsgiref import simple_server
+
 import pyservices as ps
+import abc
 
 from pyservices.data_descriptors import entity_codecs
 from pyservices.data_descriptors.fields import ComposedField
-from pyservices.exceptions import HTTPNotFound
+from pyservices.utilities.exceptions import HTTPNotFound
 from pyservices.service_descriptors.interfaces import RestResourceInterface, \
     RPCInterface, HTTPInterface
+from pyservices.context import Context
+
+
+COMPONENT_DEPENDENCIES = []
+
 
 logger = logging.getLogger(__package__)
 
@@ -18,76 +27,90 @@ logger = logging.getLogger(__package__)
 FALCON = 'falcon'
 
 
-class FrameworkAPI:
+class FrameworkApp(abc.ABC):
     """ Base class for frameworks, it is used to crete WSGI applications.
     """
-    def __init__(self, service):
-        self.service = service
-        self.ifaces = [iface_desc
-                          for iface_desc in service.interface_descriptors
-                          if issubclass(iface_desc.__class__, HTTPInterface)]
+    def __init__(self):
+        # TODO log
+        self.app = None
 
-    """ Returns a WSGI application.
-    """
-    def initialize_application(self):
+    def register_route(self, service):
         pass
 
+    @staticmethod
+    def _get_interfaces(service):
+        return [iface_desc
+                for iface_desc in service.interface_descriptors
+                if issubclass(iface_desc.__class__, HTTPInterface)]
 
-class FalconAPI(FrameworkAPI):
-    def initialize_application(self):
-        app = falcon.API()
 
-        resources = {}
+class FalconApp(FrameworkApp):
+
+    def __init__(self):
+        super().__init__()
+        self.app = falcon.API()
+
+    def register_route(self, service):
         # get falcon rest resources
-        for iface in self.ifaces:
+        resources = self._get_falcon_resource(service)
+
+        # register routes and resources
+        for uri, r in resources.items():
+            path = f'/{service.service_base_path}/{uri}'
+            self.app.add_route(path, r())
+
+        self._log_registered_urls()
+
+    def _get_falcon_resource(self, service):
+        resources = {}
+        for iface in FrameworkApp._get_interfaces(service):
             if isinstance(iface, RestResourceInterface):
                 resources.update(self.RestResourceGenerator(iface).generate())
             elif isinstance(iface, RPCInterface):
                 resources.update(self.RPCResourceGenerator(iface).generate())
-        # register routes and resources
-        for uri, r in resources.items():
-            path = f'/{self.service.service_base_path}/{uri}'
-            app.add_route(path, r())
+        return resources
 
+    def _log_registered_urls(self):
         # Logging registered uris
-        registered_uris = [x.uri_template for x in app._router._roots
+        registered_uris = [x.uri_template for x in self.app._router._roots
                            if x.uri_template is not None]
-        children = itertools.chain.from_iterable((x.children for x in app._router._roots))
+        children = itertools.chain.from_iterable(
+            (x.children for x in self.app._router._roots))
         registered_uris += [x.uri_template for x in children]
         for uri in registered_uris:
             ps.log.info("Registered: {}".format(uri))
-
-        return app
-
-    """ TODO builder duck typing for Generators
-    """
 
     class RPCResourceGenerator:
         """ TODO builder
 
         """
+
         def __init__(self, iface):
             self.iface = iface
             # name: method
             self.methods = iface._get_RPCs()
 
         @staticmethod
-        def _falcon_handler_wrapper(function):  # TODO put this to an higher level abstraction
+        def _falcon_handler_wrapper(
+                function):  # TODO put this to an higher level abstraction
             def falcon_handler(self, req, res):
                 try:
                     res.status_code = 200
                     function(req, res)
                 except Exception as e:
                     res.status_code = 500
+
             return falcon_handler
 
         def generate(self):
             path = type(self.iface)._get_endpoint_name()
             res = dict()
             for method in self.methods:
-                res[f'{path}/{method.path}'] = type(f'RPC{method.path}', (object, ), {
-                    f'on_{method.http_method}': self._falcon_handler_wrapper(method)
-                })
+                res[f'{path}/{method.path}'] = type(f'RPC{method.path}',
+                                                    (object,), {
+                                                        f'on_{method.http_method}': self._falcon_handler_wrapper(
+                                                            method)
+                                                    })
             return res
 
     class RestResourceGenerator:
@@ -106,11 +129,12 @@ class FalconAPI(FrameworkAPI):
 
             methods = {name_method[0]: name_method[1]
                        for name_method in inspect.getmembers(
-                    iface, lambda m: inspect.ismethod(m))}
+                iface, lambda m: inspect.ismethod(m))}
             collect_methods_names = filter(
                 lambda k: k.startswith('collect'), methods)
-            self.collect = sorted([methods.get(n) for n in collect_methods_names],
-                                  key=lambda m: inspect.getsourcelines(m)[1])
+            self.collect = sorted(
+                [methods.get(n) for n in collect_methods_names],
+                key=lambda m: inspect.getsourcelines(m)[1])
             self.add = methods.get('add')
             self.detail = methods.get('detail')
             self.update = methods.get('update')
@@ -145,8 +169,9 @@ class FalconAPI(FrameworkAPI):
 
             if not all(map(lambda x: isinstance(x, self.meta_model.get_class()),
                            res)):
-                logger.error("{} returns a something that is not of the model type"
-                             .format(collect.__name__))
+                logger.error(
+                    "{} returns a something that is not of the model type"
+                    .format(collect.__name__))
                 raise falcon.HTTPInternalServerError
 
             try:
@@ -246,22 +271,24 @@ class FalconAPI(FrameworkAPI):
             path = type(self.iface)._get_endpoint_name()
             res = dict()
             res[path] = type(f'REST{self.meta_model.name}s', (object,), {
-                    'on_get': self._resource_collection_get,
-                    'on_put': self._resource_collection_put})
+                'on_get': self._resource_collection_get,
+                'on_put': self._resource_collection_put})
 
             if isinstance(self.meta_model.primary_key_field, ComposedField):
-                id_dimension = len(self.meta_model.primary_key_field.meta_model.fields)
+                id_dimension = len(
+                    self.meta_model.primary_key_field.meta_model.fields)
             else:
                 id_dimension = 1
             id_path = '/'.join(['{{id_field_{}}}'.format(i)
                                 for i in range(id_dimension)])
-            res[f'{path}/{id_path}'] = type(f'REST{self.meta_model.name}', (object,), {
-                    'on_get': self._resource_get,
-                    'on_post': self._resource_post,
-                    'on_delete': self._resource_delete})
+            res[f'{path}/{id_path}'] = type(f'REST{self.meta_model.name}',
+                                            (object,), {
+                                                'on_get': self._resource_get,
+                                                'on_post': self._resource_post,
+                                                'on_delete': self._resource_delete})
             return res
 
 
-def get_framework_api(service, framework_name):
-    if framework_name == 'falcon':
-        return FalconAPI(service)
+def register_component(ctx: Context):
+    app = FalconApp()  # TODO falcon is the only WSGI app supported
+    ctx.register_app(app)  # TODO think about register_app (get_app)

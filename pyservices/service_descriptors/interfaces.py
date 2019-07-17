@@ -1,10 +1,9 @@
 import abc
 import functools
 import inspect
+import json
 
-
-# TODO make a module
-from pyservices.data_descriptors.entity_codecs import JSON
+from pyservices import JSON, Codec
 
 
 class InterfaceBase(abc.ABC):
@@ -115,17 +114,24 @@ class RPCInterface(HTTPInterface):
     TODO is this too abstract for a RPC?
     """
 
+    def __init__(self, service):
+        super().__init__(service)
+
     # TODO refactor and generalize
     @classmethod
     def _get_RPCs(cls):
-        return [
-            method[1]
-            for method in inspect.getmembers(
-                cls, lambda m: inspect.isfunction(m)) if not method[0].startswith('_')
-        ]
+        methods = []
+        for method in inspect.getmembers(cls, lambda m: inspect.isfunction(m)):
+            if not method[0].startswith('_'):
+                try:
+                    getattr(method[1], 'http_method')
+                    methods.append(method[1])
+                except AttributeError:
+                    methods.append(HTTPOperation()(method[1]))
+        return methods
 
 
-def HTTPOperation(method='get', path=None):
+def HTTPOperation(path=None, codec: Codec=JSON):
     """
     Decorator for HTTP operations
     TODO method required, path not required?
@@ -134,8 +140,10 @@ def HTTPOperation(method='get', path=None):
     def HTTP_decorator(func):
         @functools.wraps(func)
         def wrapped_http_operation(req, res):
+            # FIXME I expect that body has a dictionary like, i treat data as json...
+            json.loads(req.json())
             func(req, res)
-        wrapped_http_operation.http_method = method.lower()
-        wrapped_http_operation.path = path or func.__name__
+        wrapped_http_operation.http_method = 'post'
+        wrapped_http_operation.path = path or func.__name__.replace('-', '_')
         return wrapped_http_operation
     return HTTP_decorator

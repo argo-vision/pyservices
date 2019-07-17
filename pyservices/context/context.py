@@ -35,7 +35,7 @@ Gianluca Scarpellini - gianluca.scarpellini@argo.vision
 
 import importlib
 
-from pyservices.exceptions import ComponentNotFoundException
+from pyservices.utilities.exceptions import ComponentNotFoundException
 
 
 class Context:

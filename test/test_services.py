@@ -3,11 +3,10 @@ import unittest
 import requests
 
 import pyservices as ps
-from pyservices.exceptions import ClientException
+from pyservices.utilities.exceptions import ClientException
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import HTTPOperation
 from pyservices.service_descriptors.generators import RestGenerator
-from pyservices.service_descriptors.interfaces import *
 from test.meta_models import *
 
 base_path = 'http://localhost:7890/account-manager'
@@ -16,13 +15,13 @@ base_path = 'http://localhost:7890/account-manager'
 class AccountManager(Service):
     service_base_path = 'account-manager'
 
-    class Note(RestResourceInterface):
+    class Note(ps.interfaces.RestResourceInterface):
         meta_model = NoteMM
 
         def collect(self):
             return notes
 
-    class Account(RestResourceInterface):
+    class Account(ps.interfaces.RestResourceInterface):
         meta_model = AccountMM
         if_path = 'account-interface'  # not default behaviour
 
@@ -57,17 +56,27 @@ class AccountManager(Service):
             assert type(res_id) is int
 
     # TODO think to some tests
-    class NotesOperations(RPCInterface):
+    class NotesOperations(ps.interfaces.RPCInterface):
         if_path = 'notes-operations'
 
-        @HTTPOperation(method='GET', path='read-note')
-        def readnote(self, req, res):
+        # TODO default post
+        @HTTPOperation(path='read-note') # TODO _ to -
+        def readnote(self, arg1, arg2):
+
             # give some flexibility with req e res? TODO I1
             # res.body = f'{note.title - note.content}'  # TODO I1
             pass
 
-        @HTTPOperation(method='POST')
-        def randomnote(self, req, res):
+
+        @HTTPOperation(meta_model=AccountMM, codec=JSON)
+        def login(self, email, password):
+
+            t = self.db.login(email, password)
+            # TODO t is a AccountMM.get_class
+            return t
+
+        @HTTPOperation() #TODO redundant
+        def randomnote(self, my_random_arg):
             pass
 
         def _get_note(self, note_id):
@@ -223,7 +232,7 @@ class TestRestServer(unittest.TestCase):
         ret = self.client_proxy.interfaces.RPC.notes_operations.randomnote()
         self.assertTrue(ret)
 
-        # self.assertRaises(ret.data())  # TODO discuss type negotiation, test data I1
+        # self.assertRaises(ret.data())  # TODO test data I1
 
 
 if __name__ == '__main__':
