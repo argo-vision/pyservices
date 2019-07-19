@@ -1,5 +1,4 @@
 # This is the module facade, importing classes from the src dir/module.
-# TODO
 import logging
 
 # from .decorators import rest_add, rest_collection, rest_delete, \

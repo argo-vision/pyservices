@@ -3,7 +3,7 @@ import datetime
 import uuid
 from typing import Callable, TypeVar, Union, Mapping
 
-from pyservices.exceptions import ModelInitException, MetaTypeException
+from pyservices.utilities.exceptions import ModelInitException, MetaTypeException
 from pyservices.data_descriptors.meta_model import MetaModel
 
 
@@ -140,7 +140,7 @@ class DateTimeField(SimpleField):
     static_field_type = datetime.datetime
 
     # TODO strict could be used as false to perform the following conversions on
-    #  the _init_ of an extension of datetime.datetime
+    #  the __init__ of an extension of datetime.datetime
     def init_value(self, value, strict: bool = True):
         """ Initialize the datetime value.
 

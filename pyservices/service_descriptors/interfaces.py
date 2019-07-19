@@ -1,25 +1,52 @@
 import abc
+from functools import wraps
+import inspect
 
-# TODO make a module
-from pyservices.data_descriptors.entity_codecs import JSON
+from pyservices import JSON
 
 
 class InterfaceBase(abc.ABC):
-    """Base class of interfaces.
+    """Base class of interfaces. InterfaceBase subclasses describe interfaces.
+    They are initialization and implementation independent.
 
     The methods of the class can be overloaded in a service implementation.
+
+    Interface classes provide a descriptive information for the interface.
+    Interface instances contains the reference to the services to which a given
+        interface is linked
     """
+    if_path = None
 
     def __init__(self, service):
         self.service = service
 
+    def _get_calls(self):
+        return {method[0]: method[1] for method in inspect.getmembers(
+            self, lambda m: inspect.ismethod(m))
+                if not method[0].startswith('_')}
 
-class RestResource(InterfaceBase):
-    """Restful interface of a single Resource.
+    @classmethod
+    def _get_call_descriptors(cls):
+        return {method[0]: method[1] for method in inspect.getmembers(
+            cls, lambda m: inspect.isfunction(m))
+                if not method[0].startswith('_')}
+
+
+class HTTPInterface(InterfaceBase):
+    """Abstract HTTP interface.
+
+    """
+
+    @classmethod
+    def _get_endpoint_name(cls):
+        return cls.if_path
+
+
+class RestResourceInterface(HTTPInterface):
+    """Restful interface of a single REST resource.
 
     """
     meta_model = None
-    resource_path = None
     codec = JSON
 
     def collect(self):
@@ -92,10 +119,48 @@ class RestResource(InterfaceBase):
         pass
 
     @classmethod
-    def get_resource_name(cls):
-        return cls.resource_path or f'{cls.meta_model.name.lower()}s'
+    def _get_endpoint_name(cls):
+        return cls.if_path or f'{cls.meta_model.name.lower()}s'
+
+    def _get_calls(self):
+        methods = super()._get_calls()
+        collect_methods_names = \
+            filter(lambda k: k.startswith('collect'), methods)
+        methods['collect'] = sorted(
+            [methods.get(n) for n in collect_methods_names],
+            key=lambda m: inspect.getsourcelines(m)[1])
+        return methods
 
 
-class MessageInterface(InterfaceBase):
-    # TODO
-    pass
+class RPCInterface(HTTPInterface):
+    """RPC interface used to perform remote procedure calls.
+    """
+
+    def _get_calls(self):
+        """ TODO Actual remote procedure calls (with self etc..) """
+        return {n: RPC()(m) for n, m in super()._get_calls().items()}
+
+    @classmethod
+    def _get_call_descriptors(cls):
+        """ TODO Actual remote procedure calls (with self etc..) """
+        return {n: RPC()(c) for n, c in super()._get_call_descriptors().items()}
+
+
+# TODO this decorator could be generalized for every HTTP call
+def RPC(path=None):
+    """
+    Decorator remote procedure calls (idempotent)
+     TODO
+    """
+    def RCP_call_decorator(func):
+        if hasattr(func, 'path'):
+            return func
+
+        @wraps(func)
+        def wrapped_rpc_call(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
+        return wrapped_rpc_call
+
+    return RCP_call_decorator

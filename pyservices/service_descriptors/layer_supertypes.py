@@ -1,52 +1,39 @@
 import inspect
 
-from pyservices.service_descriptors.interfaces import RestResource, \
-    InterfaceBase
+from pyservices.service_descriptors.interfaces import InterfaceBase, \
+    HTTPInterface
 
 
 class Service:
     """ Base class used for implementing a service.
     """
-    def __init__(self, config: dict = None):
+    service_base_path = None
+
+    def __init__(self, config):
         """ Initialize the service instance.
 
         Attributes:
             config (dict): The configuration of the service.
-            TODO
         """
         self.config = config
-
         self.interface_descriptors = self._initialize_descriptors()
 
     def _initialize_descriptors(self):
         """ Initialize the interface descriptors.
 
-        This is done for let the iface know which Service instance it is related
+        This is done for let the interface know which Service instance it is related
         to.
 
         Returns:
             A list of tuples of the descriptors initialized.
         """
 
-        iface_descriptors = inspect.getmembers(
+        if_descriptors = inspect.getmembers(
             self, lambda m: inspect.isclass(m) and issubclass(m, InterfaceBase))
-        return tuple([iface_desc[1](self) for iface_desc in iface_descriptors])
+        return tuple([if_desc[1](self) for if_desc in if_descriptors])
 
     @classmethod
-    def get_rest_resources_meta_models(cls):
-        """ Class method used to obtain the RestResources used
-
-        Returns:
-            (list) The list of the RestResources of the Service describer by
-                the class.
-        """
-        resources = [m[1] for m in inspect.getmembers(
-            cls, lambda m: inspect.isclass(m) and issubclass(m, RestResource))]
-        return {res.get_resource_name(): res.meta_model for res in resources}
-
-    def get_service_path(self):
-        # TODO put default behaviour elsewhere (issue #7)
-        port = self.config.get('port') or '7890'
-        address = self.config.get('address') or 'localhost'
-        service_base_path = self.config.get('service_base_path')
-        return f'http://{address}:{port}/{service_base_path}'
+    def get_interfaces(cls):
+        ifaces = inspect.getmembers(
+            cls, lambda i: inspect.isclass(i) and issubclass(i, HTTPInterface))
+        return [iface[1] for iface in ifaces]

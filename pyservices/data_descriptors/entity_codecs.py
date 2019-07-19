@@ -3,7 +3,7 @@ import datetime
 import json
 from typing import Union
 
-from pyservices.exceptions import MetaTypeException, CodecException
+from pyservices.utilities.exceptions import MetaTypeException, CodecException
 from pyservices.service_descriptors import http_content_types
 from pyservices.data_descriptors.meta_model import MetaModel
 from pyservices.data_descriptors.fields import ListField, ComposedField, \
