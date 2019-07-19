@@ -142,7 +142,7 @@ class MetaModel:
                             value = field.default()
                         else:
                             value = copy.deepcopy(field.default)
-                        if not isinstance(value, field.field_type):  # TODO
+                        if not isinstance(value, field.field_type):
                             raise ModelInitException(
                                 f'The default value has a bad type '
                                 f'{type(value)}.Expected '

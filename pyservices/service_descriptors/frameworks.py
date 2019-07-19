@@ -2,10 +2,11 @@ import collections
 import inspect
 import itertools
 import logging
+import json
+from functools import wraps
+from json.decoder import JSONDecodeError
 
 import falcon
-from threading import Thread
-from wsgiref import simple_server
 
 import pyservices as ps
 import abc
@@ -17,9 +18,7 @@ from pyservices.service_descriptors.interfaces import RestResourceInterface, \
     RPCInterface, HTTPInterface
 from pyservices.context import Context
 
-
 COMPONENT_DEPENDENCIES = []
-
 
 logger = logging.getLogger(__package__)
 
@@ -27,9 +26,13 @@ logger = logging.getLogger(__package__)
 FALCON = 'falcon'
 
 
+# FIXME document, rename as App in Wrapper?
+# FIXME Falcon generators can be generalized
+
 class FrameworkApp(abc.ABC):
     """ Base class for frameworks, it is used to crete WSGI applications.
     """
+
     def __init__(self):
         # TODO log
         self.app = None
@@ -61,6 +64,7 @@ class FalconApp(FrameworkApp):
 
         self._log_registered_urls()
 
+    # TODO refactor, DRY
     def _get_falcon_resource(self, service):
         resources = {}
         for iface in FrameworkApp._get_interfaces(service):
@@ -81,37 +85,41 @@ class FalconApp(FrameworkApp):
             ps.log.info("Registered: {}".format(uri))
 
     class RPCResourceGenerator:
-        """ TODO builder
+        """ TODO builder document
 
         """
 
         def __init__(self, iface):
             self.iface = iface
             # name: method
-            self.methods = iface._get_RPCs()
-
-        @staticmethod
-        def _falcon_handler_wrapper(
-                function):  # TODO put this to an higher level abstraction
-            def falcon_handler(self, req, res):
-                try:
-                    res.status_code = 200
-                    function(req, res)
-                except Exception as e:
-                    res.status_code = 500
-
-            return falcon_handler
+            self.methods = iface._get_calls()
 
         def generate(self):
             path = type(self.iface)._get_endpoint_name()
             res = dict()
-            for method in self.methods:
-                res[f'{path}/{method.path}'] = type(f'RPC{method.path}',
-                                                    (object,), {
-                                                        f'on_{method.http_method}': self._falcon_handler_wrapper(
-                                                            method)
-                                                    })
+            for method in self.methods.values():
+                res[f'{path}/{method.path}'] = \
+                    type(f'RPC{method.path}', (object,),
+                         {f'on_post': FalconApp.
+                         RPCResourceGenerator._falcon_rpc_wrapper(method)})
             return res
+
+        @staticmethod
+        def _falcon_rpc_wrapper(call):
+            @wraps(call)
+            def falcon_handler(inner_self, req, res):
+                try:
+                    rpc_params = json.loads(req.stream.read())
+                    body = call(**rpc_params)
+                    res.body = json.dumps(body) if body else None
+                except JSONDecodeError as e:
+                    res.status = falcon.HTTP_400
+                except TypeError as e:
+                    res.status = falcon.HTTP_400
+                except Exception as e:  # TODO be more precise, exception translations #23
+                    res.status = falcon.HTTP_500
+
+            return falcon_handler
 
     class RestResourceGenerator:
         """Builder class used to produce Falcon-like REST Resources."""
@@ -126,15 +134,8 @@ class FalconApp(FrameworkApp):
             self.iface = iface
             self.meta_model = iface.meta_model
             self.codec = iface.codec or entity_codecs.JSON
-
-            methods = {name_method[0]: name_method[1]
-                       for name_method in inspect.getmembers(
-                iface, lambda m: inspect.ismethod(m))}
-            collect_methods_names = filter(
-                lambda k: k.startswith('collect'), methods)
-            self.collect = sorted(
-                [methods.get(n) for n in collect_methods_names],
-                key=lambda m: inspect.getsourcelines(m)[1])
+            methods = iface._get_calls()
+            self.collect = methods.get('collect')
             self.add = methods.get('add')
             self.detail = methods.get('detail')
             self.update = methods.get('update')
@@ -171,7 +172,7 @@ class FalconApp(FrameworkApp):
                            res)):
                 logger.error(
                     "{} returns a something that is not of the model type"
-                    .format(collect.__name__))
+                        .format(collect.__name__))
                 raise falcon.HTTPInternalServerError
 
             try:

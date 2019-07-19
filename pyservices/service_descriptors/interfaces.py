@@ -1,9 +1,8 @@
 import abc
-import functools
+from functools import wraps
 import inspect
-import json
 
-from pyservices import JSON, Codec
+from pyservices import JSON
 
 
 class InterfaceBase(abc.ABC):
@@ -11,11 +10,26 @@ class InterfaceBase(abc.ABC):
     They are initialization and implementation independent.
 
     The methods of the class can be overloaded in a service implementation.
+
+    Interface classes provide a descriptive information for the interface.
+    Interface instances contains the reference to the services to which a given
+        interface is linked
     """
     if_path = None
 
     def __init__(self, service):
         self.service = service
+
+    def _get_calls(self):
+        return {method[0]: method[1] for method in inspect.getmembers(
+            self, lambda m: inspect.ismethod(m))
+                if not method[0].startswith('_')}
+
+    @classmethod
+    def _get_call_descriptors(cls):
+        return {method[0]: method[1] for method in inspect.getmembers(
+            cls, lambda m: inspect.isfunction(m))
+                if not method[0].startswith('_')}
 
 
 class HTTPInterface(InterfaceBase):
@@ -108,42 +122,45 @@ class RestResourceInterface(HTTPInterface):
     def _get_endpoint_name(cls):
         return cls.if_path or f'{cls.meta_model.name.lower()}s'
 
-
-class RPCInterface(HTTPInterface):
-    """RPC interface used to perform remote procedure calls.
-    TODO is this too abstract for a RPC?
-    """
-
-    def __init__(self, service):
-        super().__init__(service)
-
-    # TODO refactor and generalize
-    @classmethod
-    def _get_RPCs(cls):
-        methods = []
-        for method in inspect.getmembers(cls, lambda m: inspect.isfunction(m)):
-            if not method[0].startswith('_'):
-                try:
-                    getattr(method[1], 'http_method')
-                    methods.append(method[1])
-                except AttributeError:
-                    methods.append(HTTPOperation()(method[1]))
+    def _get_calls(self):
+        methods = super()._get_calls()
+        collect_methods_names = \
+            filter(lambda k: k.startswith('collect'), methods)
+        methods['collect'] = sorted(
+            [methods.get(n) for n in collect_methods_names],
+            key=lambda m: inspect.getsourcelines(m)[1])
         return methods
 
 
-def HTTPOperation(path=None, codec: Codec=JSON):
+class RPCInterface(HTTPInterface):
+    """RPC interface used to perform remote procedure calls.
     """
-    Decorator for HTTP operations
-    TODO method required, path not required?
-    TODO checks on params
+
+    def _get_calls(self):
+        """ TODO Actual remote procedure calls (with self etc..) """
+        return {n: RPC()(m) for n, m in super()._get_calls().items()}
+
+    @classmethod
+    def _get_call_descriptors(cls):
+        """ TODO Actual remote procedure calls (with self etc..) """
+        return {n: RPC()(c) for n, c in super()._get_call_descriptors().items()}
+
+
+# TODO this decorator could be generalized for every HTTP call
+def RPC(path=None):
     """
-    def HTTP_decorator(func):
-        @functools.wraps(func)
-        def wrapped_http_operation(req, res):
-            # FIXME I expect that body has a dictionary like, i treat data as json...
-            json.loads(req.json())
-            func(req, res)
-        wrapped_http_operation.http_method = 'post'
-        wrapped_http_operation.path = path or func.__name__.replace('-', '_')
-        return wrapped_http_operation
-    return HTTP_decorator
+    Decorator remote procedure calls (idempotent)
+     TODO
+    """
+    def RCP_call_decorator(func):
+        if hasattr(func, 'path'):
+            return func
+
+        @wraps(func)
+        def wrapped_rpc_call(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
+        return wrapped_rpc_call
+
+    return RCP_call_decorator

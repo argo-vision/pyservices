@@ -2,7 +2,7 @@ import unittest
 
 from pyservices.data_descriptors.entity_codecs import *
 from pyservices.utilities.exceptions import MetaTypeException
-from test.meta_models import *
+from test.data_descriptors.meta_models import *
 
 
 class TestUtils(unittest.TestCase):

@@ -1,5 +1,8 @@
 import logging
 import re
+import abc
+import inspect
+import json
 from collections import namedtuple
 from contextlib import contextmanager
 
@@ -8,7 +11,9 @@ import requests
 from pyservices.data_descriptors.entity_codecs import Codec, JSON
 from pyservices.utilities.exceptions import ServiceException, ClientException
 from pyservices.service_descriptors.layer_supertypes import Service
-from pyservices.service_descriptors.interfaces import RPCInterface, RestResourceInterface
+from pyservices.service_descriptors.interfaces import RPCInterface, \
+    RestResourceInterface
+from pyservices.utilities.exceptions import HTTPExceptions
 
 logger = logging.getLogger(__package__)
 
@@ -57,53 +62,69 @@ class HTTPClient:
         service_path = service_path
 
         ifaces = service_class.get_interfaces()
-        ifaces_endpoints = {'REST': {}, 'RPC': {}}
-        # TODO generalizable
+        ifaces_endpoints = {}
         for iface in ifaces:
             iface_name = iface._get_endpoint_name()
             iface_path = f'{service_path}/{iface_name}'
             if issubclass(iface, RestResourceInterface):
-                ifaces_endpoints['REST'][iface_name] = RestResourceEndPoint(
-                    iface_path, iface.meta_model, codec)
+                endpoint = RestResourceEndPoint(iface_path, iface.meta_model,
+                                                codec)
             elif issubclass(iface, RPCInterface):
-                ifaces_endpoints['RPC'][iface_name] = RPCEndPoint(
-                    iface_path, iface._get_RPCs())
+                endpoint = RPCEndPoint(iface_path, iface._get_call_descriptors())
+            else:
+                raise NotImplementedError
+            if iface_name in ifaces_endpoints:
+                ifaces_endpoints[iface_name]._merge_endpoints(endpoint)
+            else:
+                ifaces_endpoints[iface_name] = endpoint
 
-        for iface_type, v in ifaces_endpoints.items():
-            # TODO this conversion could come handy in other places
-            for key in v.keys():
-                if key.count('-'):
-                    v[key.replace('-', '_')] = v.pop(key)
-            interfaces_tuple = namedtuple(iface_type, v.keys())
-            ifaces_endpoints[iface_type] = interfaces_tuple(**v)
+        for path in ifaces_endpoints.keys():
+            ifaces_endpoints[path.replace('-', '_')] = \
+                ifaces_endpoints.pop(path)
         interfaces_tuple = namedtuple('Interfaces', ifaces_endpoints.keys())
         self.interfaces = interfaces_tuple(**ifaces_endpoints)
 
 
-class RPCEndPoint:
+class EndPoint(abc.ABC):
+    def _merge_endpoints(self, *args):
+        for arg in args:
+            if not issubclass(type(arg), EndPoint):
+                raise Exception  # FIXME too general
+
+            methods = inspect.getmembers(arg)  # methods and attributes
+            for (n, m) in methods:
+                if not n.startswith('_'):
+                    setattr(self, n, m)
+
+
+class RPCEndPoint(EndPoint):
     """
     """
 
     @classmethod
     def _request(cls, method, path):
-        def RPC_request(**kwargs):
-            # TODO do some checks on kwargs
-            with HTTPClient.requests_call(method, path, **kwargs):
-                return True
-            return False
+        def RPC_request(self, **kwargs):
+            # TODO A check could be made if kwargs matches the call
+            with HTTPClient.requests_call(
+                    method, path, data=json.dumps(kwargs).encode('UTF-8')) \
+                    as resp:
+                if resp.status_code == 200:
+                    body = resp.content
+                    if len(body):
+                        return json.loads(body)
+                    else:
+                        return
+                raise HTTPExceptions
         return RPC_request
 
     def __init__(self, path, RPCs):
         self.path = path
-        for rpc in RPCs:
-            name = rpc.path.replace('-', '_')  # TODO move conversion?
-            fun = RPCEndPoint._request(
-                getattr(requests, rpc.http_method),
-                f'{path}/{name}')
-            setattr(self, name, fun)
+        for rpc in RPCs.values():
+            name = rpc.path.replace('-', '_')  # TODO move conversion? this should be done is 2 places
+            method = RPCEndPoint._request(requests.post, f'{path}/{rpc.path}')
+            setattr(type(self), name, method)
 
-
-class RestResourceEndPoint:
+class RestResourceEndPoint(EndPoint):
     """ Represent the object used to perform actual REST calls on a given
         resource.
     """
@@ -153,7 +174,6 @@ class RestResourceEndPoint:
         if not isinstance(resource, self.meta_model.get_class()):
             raise ValueError('Expected a {}'.format(self.meta_model.name))
         resource = self.codec.encode(resource)
-        # resource = instance_to_dict_repr(resource)  # TODO temporary
         with HTTPClient.requests_call(
                 requests.put, path=self.path, data=resource) as resp:
 
