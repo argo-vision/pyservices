@@ -33,19 +33,17 @@ class HTTPClient:
         """ Wrapper used to perform requests and checks.
 
         """
-        resp = None
         try:
             resp = method(path, **kwargs, timeout=5)
-            yield resp
         except Exception:
             raise ClientException('Exception on request')
 
-        finally:
-            # TODO more status codes could be handled
-            if resp is not None and resp.status_code == 403:
-                raise ClientException('Forbidden request')
-            if resp is None:
-                raise ClientException("Response is empty")
+        # TODO more status codes could be handled
+        if resp is not None and resp.status_code == 403:
+            raise ClientException('Forbidden request')
+        if resp is None:
+            raise ClientException("Response is empty")
+        yield resp
 
     # TODO move codec elsewhere (it is a dependency of data-related ifaces? Otherwise throw exception
     def __init__(self, service_path: str, service_class, codec: Codec):
@@ -102,9 +100,9 @@ class RPCEndPoint(EndPoint):
     """
     """
 
-    @classmethod
-    def _request(cls, method, path):
-        def RPC_request(self, **kwargs):
+    @staticmethod
+    def _request(method, path):
+        def RPC_request(**kwargs):
             # TODO A check could be made if kwargs matches the call
             args = {}
             if method == requests.get:
@@ -112,9 +110,7 @@ class RPCEndPoint(EndPoint):
             elif method in (requests.post, requests.put):
                 args['data'] = json.dumps(kwargs).encode('UTF-8')
 
-            with HTTPClient.requests_call(
-                    method, path, **args) \
-                    as resp:
+            with HTTPClient.requests_call(method, path, **args) as resp:
                 if resp.status_code == 200:
                     body = resp.content
                     if len(body):
@@ -129,7 +125,7 @@ class RPCEndPoint(EndPoint):
         for rpc in RPCs.values():
             name = rpc.path.replace('-', '_')  # TODO move conversion? this should be done is 2 places
             method = RPCEndPoint._request(getattr(requests, rpc.method), f'{path}/{rpc.path}')
-            setattr(type(self), name, method)
+            setattr(self, name, method)
 
 
 class RestResourceEndPoint(EndPoint):
@@ -204,7 +200,6 @@ class RestResourceEndPoint(EndPoint):
             return True
         else:
             return isinstance(resource, resource_class)
-
 
     def delete(self, res_id):
         # FIXME: res_id should be a primary key for the model
