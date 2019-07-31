@@ -5,6 +5,7 @@ import inspect
 import json
 from collections import namedtuple
 from contextlib import contextmanager
+from urllib.parse import urlencode
 
 import requests
 
@@ -32,19 +33,17 @@ class HTTPClient:
         """ Wrapper used to perform requests and checks.
 
         """
-        resp = None
         try:
             resp = method(path, **kwargs, timeout=5)
-            yield resp
         except Exception:
             raise ClientException('Exception on request')
 
-        finally:
-            # TODO more status codes could be handled
-            if resp is not None and resp.status_code == 403:
-                raise ClientException('Forbidden request')
-            if resp is None:
-                raise ClientException("Response is empty")
+        # TODO more status codes could be handled
+        if resp is not None and resp.status_code == 403:
+            raise ClientException('Forbidden request')
+        if resp is None:
+            raise ClientException("Response is empty")
+        yield resp
 
     # TODO move codec elsewhere (it is a dependency of data-related ifaces? Otherwise throw exception
     def __init__(self, service_path: str, service_class, codec: Codec):
@@ -101,28 +100,33 @@ class RPCEndPoint(EndPoint):
     """
     """
 
-    @classmethod
-    def _request(cls, method, path):
-        def RPC_request(self, **kwargs):
+    @staticmethod
+    def _request(method, path):
+        def RPC_request(**kwargs):
             # TODO A check could be made if kwargs matches the call
-            with HTTPClient.requests_call(
-                    method, path, data=json.dumps(kwargs).encode('UTF-8')) \
-                    as resp:
+            args = {}
+            if method == requests.get:
+                args['params'] = urlencode(kwargs)
+            elif method in (requests.post, requests.put):
+                args['data'] = json.dumps(kwargs).encode('UTF-8')
+
+            with HTTPClient.requests_call(method, path, **args) as resp:
                 if resp.status_code == 200:
                     body = resp.content
                     if len(body):
                         return json.loads(body)
                     else:
                         return
-                raise HTTPException
+                raise HTTPException()
         return RPC_request
 
     def __init__(self, path, RPCs):
         self.path = path
         for rpc in RPCs.values():
             name = rpc.path.replace('-', '_')  # TODO move conversion? this should be done is 2 places
-            method = RPCEndPoint._request(requests.post, f'{path}/{rpc.path}')
-            setattr(type(self), name, method)
+            method = RPCEndPoint._request(getattr(requests, rpc.method), f'{path}/{rpc.path}')
+            setattr(self, name, method)
+
 
 class RestResourceEndPoint(EndPoint):
     """ Represent the object used to perform actual REST calls on a given
@@ -171,9 +175,11 @@ class RestResourceEndPoint(EndPoint):
                 return data
 
     def add(self, resource):
-        if not isinstance(resource, self.meta_model.get_class()):
+        if not self._check_instances(resource, self.meta_model.get_class()):
             raise ValueError('Expected a {}'.format(self.meta_model.name))
+
         resource = self.codec.encode(resource)
+        logger.info("Put on {}".format(self.path))
         with HTTPClient.requests_call(
                 requests.put, path=self.path, data=resource) as resp:
 
@@ -184,6 +190,16 @@ class RestResourceEndPoint(EndPoint):
                 return res_id
 
         raise RuntimeError("Server side exception")
+
+    @staticmethod
+    def _check_instances(resource, resource_class):
+        if isinstance(resource, list):
+            for res in resource:
+                if not isinstance(res, resource_class):
+                    return False
+            return True
+        else:
+            return isinstance(resource, resource_class)
 
     def delete(self, res_id):
         # FIXME: res_id should be a primary key for the model
