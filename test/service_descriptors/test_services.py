@@ -1,12 +1,14 @@
-import unittest
-import requests
-from threading import Thread
-from wsgiref import simple_server
 import json
+import unittest
+from threading import Thread
+from urllib.parse import urlencode
+from wsgiref import simple_server
 
+import requests
+
+from pyservices.service_descriptors.frameworks import FalconApp
 from pyservices.service_descriptors.generators import RestGenerator
 from pyservices.utilities.exceptions import ClientException
-from pyservices.service_descriptors.frameworks import FalconApp
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.service import AccountManager
 
@@ -77,8 +79,13 @@ class TestRestServer(unittest.TestCase):
             "arg1": "arg1",
             "arg2": "arg2"
         }
-        resp = requests.post(base_path + '/notes-op/check-args',
-                             json.dumps(args_data))
+        params = urlencode(args_data)
+        resp = requests.get(base_path + '/notes-op/check-args',
+                            params)
+        self.assertEqual(resp.status_code, 200)
+
+    def testHTTPRPCNoArgs(self):
+        resp = requests.post(base_path + '/notes-op/no-args')
         self.assertEqual(resp.status_code, 200)
 
     def testHTTPReturnValue(self):
@@ -91,11 +98,12 @@ class TestRestServer(unittest.TestCase):
         self.assertEqual(resp.json(), 'my note')
 
     def testHTTPRPCBadRequest(self):
-        params = {
-            "note_id": 0,
+        args_data = {
+            "note": "arg1"
         }
-        resp = requests.post(base_path + '/notes-op/check-args',
-                             json.dumps(params))
+        params = urlencode(args_data)
+        resp = requests.get(base_path + '/notes-op/check-args',
+                            params)
         self.assertEqual(resp.status_code, 400)
 
     def testClientResourceGetCollection(self):

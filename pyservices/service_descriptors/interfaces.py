@@ -147,7 +147,7 @@ class RPCInterface(HTTPInterface):
 
 
 # TODO this decorator could be generalized for every HTTP call
-def RPC(path=None):
+def RPC(path=None, method="POST"):
     """
     Decorator remote procedure calls (idempotent)
      TODO
@@ -160,6 +160,7 @@ def RPC(path=None):
         def wrapped_rpc_call(*args, **kwargs):
             return func(*args, **kwargs)
 
+        wrapped_rpc_call.method = method.lower()
         wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
         return wrapped_rpc_call
 

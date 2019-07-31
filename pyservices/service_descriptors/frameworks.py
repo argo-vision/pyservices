@@ -100,7 +100,7 @@ class FalconApp(FrameworkApp):
             for method in self.methods.values():
                 res[f'{path}/{method.path}'] = \
                     type(f'RPC{method.path}', (object,),
-                         {f'on_post': FalconApp.
+                         {f'on_{method.method}': FalconApp.
                          RPCResourceGenerator._falcon_rpc_wrapper(method)})
             return res
 
@@ -109,9 +109,18 @@ class FalconApp(FrameworkApp):
             @wraps(call)
             def falcon_handler(inner_self, req, res):
                 try:
-                    rpc_params = json.loads(req.stream.read())
+                    if call.method in ["put", "post"]:
+                        data = req.stream.read()
+                        rpc_params = json.loads(data) if data else {}
+
+                    elif call.method == "get":
+                        rpc_params = req.params
+                    else:
+                        raise NotImplementedError()
+
                     body = call(**rpc_params)
                     res.body = json.dumps(body) if body else None
+
                 except JSONDecodeError as e:
                     res.status = falcon.HTTP_400
                 except TypeError as e:
