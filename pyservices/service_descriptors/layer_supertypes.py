@@ -37,3 +37,18 @@ class Service:
         ifaces = inspect.getmembers(
             cls, lambda i: inspect.isclass(i) and issubclass(i, HTTPInterface))
         return [iface[1] for iface in ifaces]
+
+
+class ServiceConnector:
+    """Hides the location of service.
+    Encapsulate client logic of a given service"""
+
+    # TODO cache sth?
+    # TODO BUILDER
+    pass
+    # def __init__(self, service: type(Service), local=True, location):
+    #     if local:
+    #         pass
+    #     else:
+    #         pass
+

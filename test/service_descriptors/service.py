@@ -59,6 +59,8 @@ class AccountManager(Service):
         def get_note(self, note_id):
             return self.notes[note_id]
 
+        def empty(self):
+            return "I'm empty"
 
     class Note(RestResourceInterface):
         meta_model = NoteMM

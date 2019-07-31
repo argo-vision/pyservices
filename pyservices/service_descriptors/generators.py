@@ -13,7 +13,7 @@ from pyservices.utilities.exceptions import ServiceException, ClientException
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import RPCInterface, \
     RestResourceInterface
-from pyservices.utilities.exceptions import HTTPExceptions
+from pyservices.utilities.exceptions import HTTPException
 
 logger = logging.getLogger(__package__)
 
@@ -114,7 +114,7 @@ class RPCEndPoint(EndPoint):
                         return json.loads(body)
                     else:
                         return
-                raise HTTPExceptions
+                raise HTTPException
         return RPC_request
 
     def __init__(self, path, RPCs):

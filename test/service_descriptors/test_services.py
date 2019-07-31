@@ -98,6 +98,10 @@ class TestRestServer(unittest.TestCase):
                              json.dumps(params))
         self.assertEqual(resp.status_code, 400)
 
+    def testHTTPRPCEmptyRequest(self):
+        resp = requests.post(base_path + '/notes-op/empty')
+        self.assertEqual(resp.status_code, 200)
+
     def testClientResourceGetCollection(self):
         coll = self.client_proxy.interfaces.account_interface.collect()
         for el in coll:
@@ -179,6 +183,17 @@ class TestRestServer(unittest.TestCase):
     def testClientRPCReturnValue(self):
         note = self.client_proxy.interfaces.notes_op.get_note(note_id=0)
         self.assertEqual(note, 'my note')
+
+
+class ServiceConnector(unittest.TestCase):
+    def setUp(self):
+        self.service = AccountManager({})
+
+    def testLocalCall(self):
+        self.service.dependencies['local_service'].my_call(123)
+
+    def testRemoteCall(self):
+        self.service.dependencies['remote_service'].my_call(123)
 
 
 if __name__ == '__main__':

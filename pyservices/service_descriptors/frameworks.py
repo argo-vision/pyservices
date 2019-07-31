@@ -19,6 +19,7 @@ from pyservices.service_descriptors.interfaces import RestResourceInterface, \
 from pyservices.context import Context
 
 COMPONENT_DEPENDENCIES = []
+COMPONENT_KEY = __name__
 
 logger = logging.getLogger(__package__)
 
