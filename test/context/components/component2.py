@@ -6,4 +6,4 @@ COMPONENT_KEY = __name__
 
 
 def register_component(ctx: Context):
-    pass
+    ctx.register(COMPONENT_KEY, None)

@@ -5,12 +5,12 @@ import inspect
 import json
 from collections import namedtuple
 from contextlib import contextmanager
-from urllib.parse import urlencode
 
 import requests
 
 from pyservices.data_descriptors.entity_codecs import Codec, JSON
-from pyservices.utilities.exceptions import ServiceException, ClientException
+from pyservices.utilities.exceptions import ServiceException, ClientException, \
+    CodecException
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import RPCInterface, \
     RestResourceInterface
@@ -19,8 +19,8 @@ from pyservices.utilities.exceptions import HTTPException
 logger = logging.getLogger(__package__)
 
 
-class HTTPClient:
-    """ A client proxy.
+class ServiceConnector:
+    """ A remote client proxy.
 
     Class attributes:
         clients (dict): Contains the client of different services, the key
@@ -31,7 +31,6 @@ class HTTPClient:
     @contextmanager
     def requests_call(method, path, **kwargs):
         """ Wrapper used to perform requests and checks.
-
         """
         try:
             resp = method(path, **kwargs, timeout=5)
@@ -43,28 +42,33 @@ class HTTPClient:
             raise ClientException('Forbidden request')
         if resp is None:
             raise ClientException("Response is empty")
+
         yield resp
 
-    # TODO move codec elsewhere (it is a dependency of data-related ifaces? Otherwise throw exception
-    def __init__(self, service_path: str, service_class, codec: Codec):
-        """ Initialize a REST client proxy.
+    def __init__(self, service_class, service_location: str = 'local',
+                 codec: Codec = None):
+        """ TODO.
 
         Args:
-             service_path (str): The service path. (E.g.
-                protocol://address:port/service_name)
             service_class: The class which describes the Service.
-            codec (Codec): The codec used for the communication # TODO it's likely that this will be moved in the dependencies
+            service_location (str): The service path. (E.g.
+                protocol://address:port/service_name, can be local).
+            codec (Codec): The codec used for the communication
         """
         if not issubclass(service_class, Service):
             raise ServiceException(f'The service class is not a {Service} '
                                    f'instance.')
-        service_path = service_path
 
-        ifaces = service_class.get_interfaces()
-        ifaces_endpoints = {}
-        for iface in ifaces:
+        interfaces = service_class.get_interfaces()
+
+        if codec is None and [issubclass(iface, RestResourceInterface)
+                              for iface in interfaces]:
+            raise CodecException('A Codec for a connector of a REST interface.')
+
+        interfaces_endpoints = {}
+        for iface in interfaces:
             iface_name = iface._get_endpoint_name()
-            iface_path = f'{service_path}/{iface_name}'
+            iface_path = f'{service_location}/{iface_name}'
             if issubclass(iface, RestResourceInterface):
                 endpoint = RestResourceEndPoint(iface_path, iface.meta_model,
                                                 codec)
@@ -72,16 +76,16 @@ class HTTPClient:
                 endpoint = RPCEndPoint(iface_path, iface._get_call_descriptors())
             else:
                 raise NotImplementedError
-            if iface_name in ifaces_endpoints:
-                ifaces_endpoints[iface_name]._merge_endpoints(endpoint)
+            if iface_name in interfaces_endpoints:
+                interfaces_endpoints[iface_name]._merge_endpoints(endpoint)
             else:
-                ifaces_endpoints[iface_name] = endpoint
+                interfaces_endpoints[iface_name] = endpoint
 
-        for path in ifaces_endpoints.keys():
-            ifaces_endpoints[path.replace('-', '_')] = \
-                ifaces_endpoints.pop(path)
-        interfaces_tuple = namedtuple('Interfaces', ifaces_endpoints.keys())
-        self.interfaces = interfaces_tuple(**ifaces_endpoints)
+        for path in interfaces_endpoints.keys():
+            interfaces_endpoints[path.replace('-', '_')] = \
+                interfaces_endpoints.pop(path)
+        interfaces_tuple = namedtuple('Interfaces', interfaces_endpoints.keys())
+        self.interfaces = interfaces_tuple(**interfaces_endpoints)
 
 
 class EndPoint(abc.ABC):
@@ -102,15 +106,11 @@ class RPCEndPoint(EndPoint):
 
     @staticmethod
     def _request(method, path):
-        def RPC_request(**kwargs):
+        def RPC_request(self, **kwargs):
             # TODO A check could be made if kwargs matches the call
-            args = {}
-            if method == requests.get:
-                args['params'] = urlencode(kwargs)
-            elif method in (requests.post, requests.put):
-                args['data'] = json.dumps(kwargs).encode('UTF-8')
-
-            with HTTPClient.requests_call(method, path, **args) as resp:
+            with RemoteServiceConnector.requests_call(
+                    method, path, data=json.dumps(kwargs).encode('UTF-8')) \
+                    as resp:
                 if resp.status_code == 200:
                     body = resp.content
                     if len(body):
@@ -124,7 +124,7 @@ class RPCEndPoint(EndPoint):
         self.path = path
         for rpc in RPCs.values():
             name = rpc.path.replace('-', '_')  # TODO move conversion? this should be done is 2 places
-            method = RPCEndPoint._request(getattr(requests, rpc.method), f'{path}/{rpc.path}')
+            method = RPCEndPoint._request(requests.post, f'{path}/{rpc.path}')
             setattr(self, name, method)
 
 
@@ -155,7 +155,7 @@ class RestResourceEndPoint(EndPoint):
                 if isinstance(v, str) and illegal_params_re.search(v):
                     raise TypeError(f'The param values cannot contain '
                                     f'{illegal_params_re.pattern}.')
-        with HTTPClient.requests_call(
+        with RemoteServiceConnector.requests_call(
                 requests.get, path=self.path, params=params) as resp:
             if resp.status_code == 200:
                 data = self.codec.decode(resp.content, self.meta_model)
@@ -168,7 +168,7 @@ class RestResourceEndPoint(EndPoint):
 
         path = f'{self.path}/{res_id}'
 
-        with HTTPClient.requests_call(
+        with RemoteServiceConnector.requests_call(
                 requests.get, path=path) as resp:
             if resp.status_code == 200:
                 data = self.codec.decode(resp.content, self.meta_model)
@@ -180,7 +180,7 @@ class RestResourceEndPoint(EndPoint):
 
         resource = self.codec.encode(resource)
         logger.info("Put on {}".format(self.path))
-        with HTTPClient.requests_call(
+        with RemoteServiceConnector.requests_call(
                 requests.put, path=self.path, data=resource) as resp:
 
             if resp.status_code == 201:
@@ -208,7 +208,7 @@ class RestResourceEndPoint(EndPoint):
 
         path = f'{self.path}/{res_id}'
 
-        with HTTPClient.requests_call(
+        with RemoteServiceConnector.requests_call(
                 requests.get, path=path) as resp:
             if resp.status_code == 200:
                 return True
@@ -222,22 +222,20 @@ class RestResourceEndPoint(EndPoint):
             res_id = "/".join(res_id.values())
         resource = self.codec.encode(resource)
         path = f'{self.path}/{res_id}'
-        with HTTPClient.requests_call(
+        with RemoteServiceConnector.requests_call(
                 requests.post, path=path, data=resource) as resp:
             if resp.status_code == 200:
                 return True
 
 
 class RestGenerator:
-    """ Class used to generate the rest server and client.
-    """
 
     @classmethod
     def get_client_proxy(cls, service_address: str, service_port: str,
-                         service_class, codec: Codec = JSON) -> HTTPClient:
+                         service_class, codec: Codec = JSON) -> RemoteServiceConnector:
         """ Method used to generate a REST client.
         """
         service_path = f'http://{service_address}:{service_port}/' \
             f'{service_class.service_base_path}'
-        client = HTTPClient(service_path, service_class, codec)
+        client = RemoteServiceConnector(service_path, service_class, codec)
         return client

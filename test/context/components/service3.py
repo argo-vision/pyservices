@@ -7,8 +7,9 @@ COMPONENT_KEY = __name__
 
 
 class Service3(Service):
-    pass
+    service_base_path = 'Service3'
 
 
 def register_component(ctx: Context):
-    pass
+    ctx.register(COMPONENT_KEY, Service3({}))
+

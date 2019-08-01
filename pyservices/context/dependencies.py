@@ -3,7 +3,8 @@ import inspect
 import importlib
 import copy
 
-from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.service_descriptors.layer_supertypes import Service, \
+    ServiceConnector
 from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
 from pyservices.context import Context
@@ -109,5 +110,18 @@ def create_application(conf):
     for dep in dependencies:
         m = importlib.import_module(dep)
         m.register_component(ctx)
+    _inject_dependencies(ctx, conf['services'])
     ctx.startup()
     return ctx.get_app()
+
+
+def _inject_dependencies(ctx, microservice_services):
+    services = ctx.get_services()
+    remotes = {m: s.location if m not in microservice_services else None
+               for m, s in services.items()}
+    for module, service in services.items():
+        if remotes[module] is None:
+            connectors = [ServiceConnector(s, remotes[m])
+                          for m, s in services.items()
+                          if m in importlib.import_module(module).COMPONENT_DEPENDENCIES]
+            [service.add_connector(c) for c in connectors]

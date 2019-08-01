@@ -34,6 +34,7 @@ Gianluca Scarpellini - gianluca.scarpellini@argo.vision
 """
 
 from pyservices.utilities.exceptions import ComponentNotFound
+from pyservices.service_descriptors.layer_supertypes import Service
 
 
 class Context:
@@ -67,6 +68,9 @@ class Context:
             return self._state[key]
         except Exception:
             raise ComponentNotFound()
+
+    def get_services(self):
+        return {k: v for k, v in self._state .items() if isinstance(v, Service)}
 
     def startup(self):
         for function in self._startup_functions:

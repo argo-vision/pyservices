@@ -6,9 +6,10 @@ COMPONENT_DEPENDENCIES = [get_path('service_circular2')]
 COMPONENT_KEY = __name__
 
 
-class ServiceCircula1(Service):
+class ServiceCircular1(Service):
     pass
 
 
 def register_component(ctx: Context):
-    pass
+    ctx.register(COMPONENT_KEY, ServiceCircular1({}))
+

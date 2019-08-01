@@ -11,4 +11,5 @@ class BrokenService(Service):
 
 
 def register_component(ctx: Context):
-    pass
+    ctx.register(COMPONENT_KEY, BrokenService({}))
+

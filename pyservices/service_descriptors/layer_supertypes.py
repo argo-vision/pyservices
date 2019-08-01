@@ -1,5 +1,6 @@
 import inspect
 
+from pyservices.service_descriptors.generators import RemoteServiceConnector
 from pyservices.service_descriptors.interfaces import InterfaceBase, \
     HTTPInterface
 
@@ -16,7 +17,9 @@ class Service:
             config (dict): The configuration of the service.
         """
         self.config = config
+        self.dependencies = {}
         self.interface_descriptors = self._initialize_descriptors()
+        self.location = STUFF  # TODO from config
 
     def _initialize_descriptors(self):
         """ Initialize the interface descriptors.
@@ -38,17 +41,15 @@ class Service:
             cls, lambda i: inspect.isclass(i) and issubclass(i, HTTPInterface))
         return [iface[1] for iface in ifaces]
 
+    def add_connector(self, connector):
+        self.dependencies[connector.service_name] = connector
 
-class ServiceConnector:
-    """Hides the location of service.
-    Encapsulate client logic of a given service"""
-
-    # TODO cache sth?
-    # TODO BUILDER
-    pass
-    # def __init__(self, service: type(Service), local=True, location):
-    #     if local:
-    #         pass
-    #     else:
-    #         pass
-
+    def get_service_connector(self, remote):
+        """ TODO remote is None if the connector is local
+        """
+        if remote:
+            # It's non local
+            return RemoteServiceConnector(self)
+        else:
+            # It's local
+            return LocalServiceConnector(self)
