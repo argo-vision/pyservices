@@ -50,7 +50,7 @@ class Context:
     def register_app(self, app):
         self._state[self.APP_KEY] = app
 
-    def get_app(self ):
+    def get_app(self):
         return self._state[self.APP_KEY]
 
     def register_startup(self, function: callable):
@@ -104,4 +104,3 @@ def create_application(conf):
     _compose(ctx, conf['components'], [])
     ctx.startup()
     return ctx.get_app()
-
