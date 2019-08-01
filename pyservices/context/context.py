@@ -70,7 +70,7 @@ class Context:
             raise ComponentNotFound()
 
     def get_services(self):
-        return {k: v for k, v in self._state .items() if isinstance(v, Service)}
+        return {k: v for k, v in self._state.items() if isinstance(v, Service)}
 
     def startup(self):
         for function in self._startup_functions:

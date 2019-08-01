@@ -3,8 +3,9 @@ import inspect
 import importlib
 import copy
 
-from pyservices.service_descriptors.layer_supertypes import Service, \
-    ServiceConnector
+from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.service_descriptors.service_connector import \
+    create_service_connector
 from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
 from pyservices.context import Context
@@ -110,18 +111,18 @@ def create_application(conf):
     for dep in dependencies:
         m = importlib.import_module(dep)
         m.register_component(ctx)
-    _inject_dependencies(ctx, conf['services'])
+    _inject_dependencies(ctx.get_services(), conf['services'])
     ctx.startup()
     return ctx.get_app()
 
 
-def _inject_dependencies(ctx, microservice_services):
-    services = ctx.get_services()
-    remotes = {m: s.location if m not in microservice_services else None
+def _inject_dependencies(services, microservice_services):
+
+    remotes = {m: s.location if m not in microservice_services else 'local'
                for m, s in services.items()}
     for module, service in services.items():
-        if remotes[module] is None:
-            connectors = [ServiceConnector(s, remotes[m])
+        if remotes[module] == 'local':
+            connectors = {s.service_base_path: create_service_connector(s, remotes[m])
                           for m, s in services.items()
-                          if m in importlib.import_module(module).COMPONENT_DEPENDENCIES]
-            [service.add_connector(c) for c in connectors]
+                          if m in importlib.import_module(module).COMPONENT_DEPENDENCIES}
+            [service.add_connector(bp, c) for bp, c in connectors.items()]

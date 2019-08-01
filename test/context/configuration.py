@@ -5,7 +5,7 @@ def get_path(comp_name):
 
 configurations = {
     'micro-service1': {
-        'services': [get_path('service1'), get_path('service2')]
+        'services': [get_path('service1'), get_path('service2')],
     },
     'micro-service2': {
         'services': [get_path('service3')]

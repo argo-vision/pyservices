@@ -7,7 +7,6 @@ from wsgiref import simple_server
 import requests
 
 from pyservices.service_descriptors.frameworks import FalconApp
-from pyservices.service_descriptors.generators import RestGenerator
 from pyservices.utilities.exceptions import ClientException
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.service import AccountManager
@@ -191,17 +190,6 @@ class TestRestServer(unittest.TestCase):
     def testClientRPCReturnValue(self):
         note = self.client_proxy.interfaces.notes_op.get_note(note_id=0)
         self.assertEqual(note, 'my note')
-
-
-class ServiceConnector(unittest.TestCase):
-    def setUp(self):
-        self.service = AccountManager({})
-
-    def testLocalCall(self):
-        self.service.dependencies['local_service'].my_call(123)
-
-    def testRemoteCall(self):
-        self.service.dependencies['remote_service'].my_call(123)
 
 
 if __name__ == '__main__':
