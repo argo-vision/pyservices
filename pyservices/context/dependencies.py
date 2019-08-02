@@ -117,10 +117,16 @@ def destructive_dfs(graph: dict, edge: str, visit: list):
 
 def create_application(conf):
     ctx = Context()
-    for dep in conf.sorted_dependencies():
+    components = conf.sorted_dependencies()
+    for dep in components:
         m = importlib.import_module(dep)
-        m.register_component(ctx)
-    _inject_dependencies(ctx.get_services(), conf)
+        service = get_service_class(m)
+        if service is not None and dep not in conf.services():
+            remote_service = create_service_connector(service,conf.address_of(dep))
+            ctx.register(m.COMPONENT_KEY,remote_service)
+        else:
+            m.register_component(ctx)
+    # _inject_dependencies(ctx.get_services(), conf)
     ctx.startup()
     return ctx.get_app()
 

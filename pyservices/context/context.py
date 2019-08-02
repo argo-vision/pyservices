@@ -32,7 +32,7 @@ def register_component(ctx: Context):
 
 Gianluca Scarpellini - gianluca.scarpellini@argo.vision
 """
-
+from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utilities.exceptions import ComponentNotFound
 from pyservices.service_descriptors.layer_supertypes import Service
 
@@ -45,7 +45,10 @@ class Context:
         self._state[self.APP_KEY] = None
 
     def register(self, key, component):
-        self._state[key] = component
+        if isinstance(component, Service):
+            create_service_connector(component.__class__, component)
+        else:
+            self._state[key] = component
 
     def register_app(self, app):
         self._state[self.APP_KEY] = app

@@ -11,7 +11,7 @@ def create_service_connector(service, service_location):
     """ A remote client proxy.
         Args:
             service: The class which describes the Service.
-            service_location (str): The service path. (E.g.
+            service_location : The service path. (E.g.
                 protocol://address:port/service_name).
                 Can be "local"
         """
