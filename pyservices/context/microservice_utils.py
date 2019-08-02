@@ -1,25 +1,42 @@
 import os
 from typing import List
 
+from pyservices.context.dependencies import microservice_sorted_dependencies
 
-class MicroServicesConfiguration:
-    """
-    MicroServiceConfiguration
 
-    """
+class MicroServiceConfiguration:
+    def __init__(self, conf: dict, name=None):
+        if name is None:
+            self.name = MicroServiceConfiguration._current_microservice_name()
+        else:
+            self.name = name
+        if conf.get(name) is None:
+            raise ValueError("Cannot find service")
+        self.conf = conf
 
-    def __init__(self, configuration: dict):
-        self.conf = configuration
+    def address(self) -> str:
+        return self.microservice_address(self.name)
 
-    def current_microservice_name(self) -> str:
-        """
-            service name from os variable GAE_SERVICE
-        """
-        service: str = os.environ.get("GAE_SERVICE")
-        return service.lower()
+    def address_of(self, service: str) -> str:
+        micro = self.microservice_of(service)
+        return self.microservice_address(micro)
+
+    def services(self) -> List[str]:
+        return self.conf[self.name].get("services", [])
+
+    def sorted_dependencies(self) -> List[str]:
+        return microservice_sorted_dependencies(self.services())
 
     def microservices_names(self) -> List[str]:
         return list(self.conf.keys())
+
+    @staticmethod
+    def _current_microservice_name() -> str:
+        """
+            service name from os variable GAE_SERVICE
+        """
+        service = os.environ.get("GAE_SERVICE")
+        return service.lower() if service is not None else ""
 
     def microservice_address(self, microservice_name) -> str:
         microservice = self.conf.get(microservice_name)
@@ -34,16 +51,9 @@ class MicroServicesConfiguration:
                 return micro
         raise ValueError("Service not found")
 
-    def service_address(self, service: str) -> str:
-        micro = self.microservice_of(service)
-        return self.microservice_address(micro)
-
     def microservice_services(self, micro_name: str) -> List[str]:
         micro = self.microservice_configuration(micro_name)
-        return micro["components"]
+        return micro.services()
 
-    def microservice_configuration(self, micro_name: str) -> dict:
-        micro = self.conf.get(micro_name)
-        if micro is None:
-            raise ValueError("Micro service not found")
-        return micro
+    def microservice_configuration(self, micro_name: str):
+        return MicroServiceConfiguration(self.conf, micro_name)

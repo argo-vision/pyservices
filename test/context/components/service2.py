@@ -13,5 +13,5 @@ class Service2(Service):
 
 
 def register_component(ctx: Context):
-    ctx.register(COMPONENT_KEY, Service2({}))
+    ctx.register(COMPONENT_KEY, Service2())
 

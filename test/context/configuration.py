@@ -6,18 +6,28 @@ def get_path(comp_name):
 configurations = {
     'micro-service1': {
         'services': [get_path('service1'), get_path('service2')],
+        'address' : 'localhost',
+        'port': '12345'
     },
     'micro-service2': {
-        'services': [get_path('service3')]
+        'services': [get_path('service3')],
+        'address': 'localhost',
+        'port': '12346'
     },
     'micro-service-broken': {
-        'services': [get_path('service_broken')]
+        'services': [get_path('service_broken')],
+        'address': 'localhost',
+        'port': '12347'
     },
     'micro-service-circular': {
-        'services': [get_path('service_circular1')]
+        'services': [get_path('service_circular1')],
+        'address': 'localhost',
+        'port': '12348'
     },
     'micro-service-empty': {
-        'services': []
+        'services': [],
+        'address': 'localhost',
+        'port': '12349'
     },
 
 }

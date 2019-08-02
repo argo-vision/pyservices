@@ -107,19 +107,18 @@ def destructive_dfs(graph: dict, edge: str, visit: list):
 
 def create_application(conf):
     ctx = Context()
-    dependencies = microservice_sorted_dependencies(conf['services'])
-    for dep in dependencies:
+    for dep in conf.sorted_dependencies():
         m = importlib.import_module(dep)
         m.register_component(ctx)
-    _inject_dependencies(ctx.get_services(), conf['services'])
+    _inject_dependencies(ctx.get_services(), conf)
     ctx.startup()
     return ctx.get_app()
 
 
-def _inject_dependencies(services, microservice_services):
-
-    remotes = {m: s.location if m not in microservice_services else 'local'
+def _inject_dependencies(services, conf):
+    remotes = {m: conf.address_of(s.__module__) if m not in conf.services() else 'local'
                for m, s in services.items()}
+
     for module, service in services.items():
         if remotes[module] == 'local':
             connectors = {s.service_base_path: create_service_connector(s, remotes[m])

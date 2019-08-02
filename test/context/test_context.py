@@ -1,12 +1,12 @@
 import unittest
 
+from pyservices.context.dependencies import create_application
 from pyservices.context.dependencies import microservice_sorted_dependencies, \
     components_graph, topological_sort, is_acyclic
-from pyservices.context.dependencies import create_application
+from pyservices.context.microservice_utils import MicroServiceConfiguration
+from pyservices.service_descriptors.frameworks import FrameworkApp
 from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
-from pyservices.service_descriptors.frameworks import FrameworkApp
-
 from test.context.configuration import configurations
 
 
@@ -56,8 +56,8 @@ class TestContext(unittest.TestCase):
                     'test.context.components.service3',
                     'test.context.components.component2',
                     'test.context.components.component1',
-                    'test.context.components.service2',
-                    'test.context.components.service1']
+                    'test.context.components.service1',
+                    'test.context.components.service2']
         self.assertListEqual(deps, expected)
 
     def testAcyclicGraph(self):
@@ -67,8 +67,8 @@ class TestContext(unittest.TestCase):
         self.assertTrue(is_acyclic(acyclic))
 
     def testCyclicDeps(self):
-        self.assertRaises(ServiceDependenciesError, create_application,
-                          configurations['micro-service-circular'])
+        conf = MicroServiceConfiguration(configurations, 'micro-service-circular')
+        self.assertRaises(ServiceDependenciesError, create_application, conf)
 
     def testComponentGraph(self):
         graph = components_graph({},
@@ -87,7 +87,9 @@ class TestContext(unittest.TestCase):
         self.assertEqual(graph[key], deps)
 
     def testCreateApplication(self):
-        app = create_application(configurations['micro-service1'])
+        conf = MicroServiceConfiguration(configurations, 'micro-service1')
+        app = create_application(conf)
         self.assertTrue(isinstance(app, FrameworkApp))
-        app = create_application(configurations['micro-service2'])
+        conf = MicroServiceConfiguration(configurations, 'micro-service2')
+        app = create_application(conf)
         self.assertTrue(isinstance(app, FrameworkApp))

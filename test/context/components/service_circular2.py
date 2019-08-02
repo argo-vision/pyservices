@@ -11,5 +11,4 @@ class ServiceCircular2(Service):
 
 
 def register_component(ctx: Context):
-    ctx.register(COMPONENT_KEY, ServiceCircular2({}))
-
+    ctx.register(COMPONENT_KEY, ServiceCircular2())
