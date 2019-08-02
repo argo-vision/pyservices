@@ -1,6 +1,6 @@
 import inspect
 
-from pyservices.service_descriptors.interfaces import InterfaceBase
+from pyservices.service_descriptors.interfaces import HTTPInterface
 
 
 class Service:
@@ -25,9 +25,13 @@ class Service:
             A list of tuples of the descriptors initialized.
         """
 
-        if_descriptors = inspect.getmembers(
-            self, lambda m: inspect.isclass(m) and issubclass(m, InterfaceBase))
-        return tuple([if_desc[1](self) for if_desc in if_descriptors])
+        return tuple(if_desc(self) for if_desc in self.interfaces())
 
     def add_connector(self, dependent_service_name, connector):
         self.dependencies[dependent_service_name] = connector
+
+    @classmethod
+    def interfaces(cls):
+        return [cls_attribute for cls_attribute in cls.__dict__.values()
+                if inspect.isclass(cls_attribute)
+                and issubclass(cls_attribute, HTTPInterface)]

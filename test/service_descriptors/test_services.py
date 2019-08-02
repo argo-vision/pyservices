@@ -28,7 +28,7 @@ class TestRestServer(unittest.TestCase):
         t = Thread(target=self.httpd.serve_forever)
         t.start()
 
-        self.client_proxy = create_service_connector(service, base_path)
+        self.client_proxy = create_service_connector(AccountManager, base_path)
 
     def tearDown(self):
         self.httpd.shutdown()

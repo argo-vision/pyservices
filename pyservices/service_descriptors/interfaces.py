@@ -26,7 +26,7 @@ class InterfaceBase(abc.ABC):
                 if not method[0].startswith('_')}
 
     @classmethod
-    def _get_call_descriptors(cls):
+    def get_call_descriptors(cls):
         return {method[0]: method[1] for method in inspect.getmembers(
             cls, lambda m: inspect.isfunction(m))
                 if not method[0].startswith('_')}
@@ -141,9 +141,9 @@ class RPCInterface(HTTPInterface):
         return {n: RPC()(m) for n, m in super()._get_calls().items()}
 
     @classmethod
-    def _get_call_descriptors(cls):
+    def get_call_descriptors(cls):
         """ TODO Actual remote procedure calls (with self etc..) """
-        return {n: RPC()(c) for n, c in super()._get_call_descriptors().items()}
+        return {n: RPC()(c) for n, c in super().get_call_descriptors().items()}
 
 
 # TODO this decorator could be generalized for every HTTP call

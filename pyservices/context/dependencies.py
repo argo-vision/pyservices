@@ -121,7 +121,7 @@ def _inject_dependencies(services, conf):
 
     for module, service in services.items():
         if remotes[module] == 'local':
-            connectors = {s.service_base_path: create_service_connector(s, remotes[m])
+            connectors = {s.service_base_path: create_service_connector(s.__class__, remotes[m])
                           for m, s in services.items()
                           if m in importlib.import_module(module).COMPONENT_DEPENDENCIES}
             [service.add_connector(bp, c) for bp, c in connectors.items()]
