@@ -1,7 +1,6 @@
-from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import RPC, \
     RestResourceInterface, RPCInterface
-from pyservices.data_descriptors.entity_codecs import JSON
+from pyservices.service_descriptors.layer_supertypes import Service
 from test.data_descriptors.meta_models import *
 
 

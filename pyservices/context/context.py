@@ -67,7 +67,7 @@ class Context:
         try:
             return self._state[key]
         except Exception:
-            raise ComponentNotFound()
+            raise ComponentNotFound('Cannot find {}'.format(key))
 
     def get_services(self):
         return {k: v for k, v in self._state.items() if isinstance(v, Service)}

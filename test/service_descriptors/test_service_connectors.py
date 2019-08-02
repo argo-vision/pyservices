@@ -1,12 +1,9 @@
 import unittest
-
 from threading import Thread
 from wsgiref import simple_server
 
 from pyservices.service_descriptors.frameworks import FalconApp
 from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.context.dependencies import create_application
-
 from test.service_descriptors.components.service1 import Service1, note_mm
 from test.service_descriptors.components.service2 import Service2
 from test.service_descriptors.components.service3 import Service3

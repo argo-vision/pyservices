@@ -1,13 +1,13 @@
-import functools
-import inspect
-import importlib
 import copy
+import functools
+import importlib
+import inspect
 
+from pyservices.context import Context
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
-from pyservices.context import Context
 
 
 def microservice_sorted_dependencies(services: list):
@@ -65,7 +65,12 @@ def components_graph(graph, component):
         graph.update({module.COMPONENT_KEY: missing_nodes.copy()})
         while len(missing_nodes):
             next_module = importlib.import_module(missing_nodes.pop())
+            service = get_service_class(next_module)
             key = next_module.COMPONENT_KEY
+            if service is not None and issubclass(service,Service):
+                # No dependencies for a remote service
+                graph[key] = []
+                continue
             deps = next_module.COMPONENT_DEPENDENCIES.copy()
             if key not in graph.keys():
                 missing_nodes.extend(deps)
@@ -78,6 +83,11 @@ def components_graph(graph, component):
 
 def is_acyclic(graph):
     test_graph = copy.deepcopy(graph)
+
+    leaves_without_a_root = list(set(sum(test_graph.values(), [])) - set(test_graph.keys()))
+    for l in leaves_without_a_root:
+        test_graph[l] = []
+
     while test_graph:
         leaves = [edge for edge, adj in test_graph.items() if not adj]
         if not leaves:
@@ -88,7 +98,8 @@ def is_acyclic(graph):
                     adj.remove(leaf)
                 except ValueError as e:
                     pass
-            test_graph.pop(leaf)
+            if leaf in test_graph.keys():
+                test_graph.pop(leaf)
     return True
 
 
