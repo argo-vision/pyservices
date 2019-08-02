@@ -2,12 +2,12 @@ from collections import namedtuple
 
 from pyservices.service_descriptors.interfaces import RestResourceInterface, RPCInterface
 from pyservices.service_descriptors.layer_supertypes import Service
-from pyservices.service_descriptors.proxy.rest_proxy import RestEndPointDispatcher
+from pyservices.service_descriptors.proxy.rest_proxy import RestDispatcherEndPoint
 from pyservices.service_descriptors.proxy.rpc_proxy import RPCDispatcherEndPoint
 from pyservices.utilities.exceptions import ServiceException
 
 
-def create_service_connector(service, service_location: str):
+def create_service_connector(service, service_location):
     """ A remote client proxy.
         Args:
             service: The class which describes the Service.
@@ -21,10 +21,16 @@ def create_service_connector(service, service_location: str):
     interfaces_endpoints = {}
 
     for iface in service.interfaces():
+        if type(service_location) == str:
+            loc = service_location
+        else:
+            descriptor_find = [x for x in service_location.interface_descriptors if isinstance(x, iface)]
+            loc = descriptor_find[0]
+
         if issubclass(iface, RestResourceInterface):
-            endpoint = RestEndPointDispatcher(iface, service_location)
+            endpoint = RestDispatcherEndPoint(iface, loc)
         elif issubclass(iface, RPCInterface):
-            endpoint = RPCDispatcherEndPoint(iface, service_location)
+            endpoint = RPCDispatcherEndPoint(iface, loc)
         else:
             raise NotImplementedError
 

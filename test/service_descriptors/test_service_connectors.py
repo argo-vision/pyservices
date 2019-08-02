@@ -37,7 +37,8 @@ configurations = {
 class ServiceConnectorTest(unittest.TestCase):
 
     def testServiceConnectorLocal(self):
-        connector = create_service_connector(Service1, 'local')
+        s = Service1()
+        connector = create_service_connector(Service1, s)
         note = connector.notes.detail(123)
         self.assertTrue(isinstance(note, note_mm.get_class()))
         content = connector.notes_op.read_note()
@@ -57,16 +58,3 @@ class ServiceConnectorTest(unittest.TestCase):
         self.assertEqual(note.content, content)
         httpd.shutdown()
         httpd.server_close()
-
-    def testLocalCall(self):
-        app_local = create_application(configurations['micro-service1'])
-        connector = create_service_connector(Service2, 'local')
-        httpd = simple_server.make_server(address, port, app_local)
-
-        self.service.dependencies['local_service'].my_call(123)
-        httpd.shutdown()
-        httpd.server_close()
-
-    def testRemoteCall(self):
-        app_remote = create_application(configurations)
-        self.service.dependencies['remote_service'].my_call(123)

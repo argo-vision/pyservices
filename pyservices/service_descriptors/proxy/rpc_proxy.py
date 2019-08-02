@@ -44,31 +44,51 @@ class RemoteRPCRequestCall:
             raise ClientException("Not a 2xx")
 
 
+class LocalRPCRequestCall:
+    def __init__(self, iface_instance):
+        self.instance = iface_instance
+
+    def call(self, method, data):
+        try:
+            m = getattr(self.instance, method)
+            data = m(**data)
+        except Exception:
+            # TODO
+            raise Exception
+        return data
+
+
 class RPCDispatcherEndPoint(EndPoint):
     def _request(self, http_method, method_name):
 
         def RPC_request(**kwargs):
             # TODO A check could be made if kwargs matches the call
-            return http_method(path=method_name, data=kwargs)
+            return http_method(method_name, kwargs)
 
         return RPC_request
 
     def __init__(self, iface, service_location):
-        if service_location == 'local':
-            pass
-            # self._request_conrext_manager = local_request_call
-            # self._iface_location = service_location
-        else:
+        if type(service_location) == str:
             iface_location = f'{service_location}/{iface.get_endpoint_name()}'
             self._request_handler = RemoteRPCRequestCall(iface_location)
 
-        calls = iface.get_call_descriptors()
-        for rpc in calls.values():
-            name = rpc.path.replace('-', '_')
+            calls = iface.get_call_descriptors()
+            for rpc in calls.values():
+                name = rpc.path.replace('-', '_')
 
-            if rpc.method == 'post':
-                call = self._request_handler.post
-            else:
-                call = self._request_handler.get
-            method = self._request(call, method_name=rpc.path)
-            setattr(self, name, method)
+                if rpc.method == 'post':
+                    call = self._request_handler.post
+                else:
+                    call = self._request_handler.get
+                method = self._request(call, method_name=rpc.path)
+                setattr(self, name, method)
+        else:
+            self._request_handler = LocalRPCRequestCall(service_location)
+
+            calls = iface.get_call_descriptors()
+            for rpc in calls.values():
+                name = rpc.path.replace('-', '_')
+
+                call = self._request_handler.call
+                method = self._request(call, method_name=rpc.__name__)
+                setattr(self, name, method)

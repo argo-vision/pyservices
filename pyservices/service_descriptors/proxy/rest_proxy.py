@@ -1,3 +1,4 @@
+import inspect
 import json
 import re
 from abc import abstractmethod
@@ -118,7 +119,44 @@ class RemoteRestRequestCall(RestEndPoint):
         return JSON.decode(resp.content, self.model)
 
 
-class RestEndPointDispatcher(RestEndPoint):
+# FIXME: mayube not all this functions are implemented
+class LocalRestRequestCall(RestEndPoint):
+    def __init__(self, instance):
+
+        methods = instance.get_calls()
+        self._collect = methods.get('collect')
+        self._add = methods.get('add')
+        self._detail = methods.get('detail')
+        self._update = methods.get('update')
+        self._delete = methods.get('delete')
+
+    def delete(self, res_id):
+        return self._delete(res_id)
+
+    def update(self, res_id, data):
+        return self._update(res_id)
+
+    def collect(self, **kwargs):
+        def get_callable_collect():
+            for c in self._collect:
+                try:
+                    sg = inspect.signature(c)
+                    sg.bind(**kwargs)
+                    return c
+                except TypeError:
+                    continue
+
+        coll = get_callable_collect()
+        return coll(**kwargs)
+
+    def detail(self, res_id):
+        return self._detail(res_id)
+
+    def add(self, data):
+        return self._add(data)
+
+
+class RestDispatcherEndPoint(RestEndPoint):
     """ Represent the object used to perform actual REST calls on a given
         resource.
     """
@@ -126,13 +164,11 @@ class RestEndPointDispatcher(RestEndPoint):
     def __init__(self, iface, service_location):
         """ Initialize the rest resource end point.
         """
-        if service_location == 'local':
-            pass
-            # self._request_conrext_manager = local_request_call
-            # self._iface_location = service_location
-        else:
+        if type(service_location) == str:
             iface_location = f'{service_location}/{iface.get_endpoint_name()}'
             self._request_handler = RemoteRestRequestCall(iface_location, iface.meta_model)
+        else:
+            self._request_handler = LocalRestRequestCall(service_location)
         self.meta_model = iface.meta_model
 
     def collect(self, params: dict = None):

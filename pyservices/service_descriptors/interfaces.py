@@ -20,7 +20,7 @@ class InterfaceBase(abc.ABC):
     def __init__(self, service):
         self.service = service
 
-    def _get_calls(self):
+    def get_calls(self):
         return {method[0]: method[1] for method in inspect.getmembers(
             self, lambda m: inspect.ismethod(m))
                 if not method[0].startswith('_')}
@@ -122,8 +122,8 @@ class RestResourceInterface(HTTPInterface):
     def get_endpoint_name(cls):
         return cls.if_path or f'{cls.meta_model.name.lower()}s'
 
-    def _get_calls(self):
-        methods = super()._get_calls()
+    def get_calls(self):
+        methods = super().get_calls()
         collect_methods_names = \
             filter(lambda k: k.startswith('collect'), methods)
         methods['collect'] = sorted(
@@ -136,9 +136,9 @@ class RPCInterface(HTTPInterface):
     """RPC interface used to perform remote procedure calls.
     """
 
-    def _get_calls(self):
+    def get_calls(self):
         """ TODO Actual remote procedure calls (with self etc..) """
-        return {n: RPC()(m) for n, m in super()._get_calls().items()}
+        return {n: RPC()(m) for n, m in super().get_calls().items()}
 
     @classmethod
     def get_call_descriptors(cls):
