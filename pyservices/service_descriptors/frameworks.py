@@ -100,7 +100,9 @@ class FalconApp(FrameworkApp):
             path = type(self.iface)._get_endpoint_name()
             res = dict()
             for method in self.methods.values():
-                res[f'{path}/{method.path}'] = \
+                res_path = f'{path}/{method.path}'
+                logger.error("Creating {} - {}".format(res_path, method.method))
+                res[res_path] = \
                     type(f'RPC{method.path}', (object,),
                          {f'on_{method.method}': FalconApp.
                          RPCResourceGenerator._falcon_rpc_wrapper(method)})

@@ -41,7 +41,7 @@ class RemoteRequestCall:
 
     def post(self, **kwargs):
         try:
-            resp = requests.post(kwargs['path'], data=json.loads(kwargs.get('remote_data')), timeout=5)
+            resp = requests.post(kwargs['path'], json=json.loads(kwargs.get('remote_data')), timeout=5)
         except Exception:
             raise ClientException('Exception on request')
 
@@ -64,24 +64,6 @@ class RemoteRequestCall:
 
         self._check_message_status(resp)
         return resp.content
-
-
-def remote_request_call(http_method, path, remote_data=None, **kwargs):
-    """ Wrapper used to perform requests and checks. TODO
-    """
-    try:
-        resp = http_method(path, data=remote_data, timeout=5)
-    except Exception:
-        raise ClientException('Exception on request')
-
-    # TODO more status codes could be handled
-    if resp is not None and resp.status_code == 403:
-        raise ClientException('Forbidden request')
-    if resp is None:
-        raise ClientException("Response is empty")
-    if not str(resp.status_code).startswith('2'):
-        raise ClientException("Not a 2xx")
-    return resp.content
 
 
 def local_request_call(interface, actual_method_name, local_data=None, **kwargs):
@@ -164,12 +146,13 @@ class RPCEndPoint(EndPoint):
         path = f'{self._iface_location}/{method_name}'
 
         def RPC_request(**kwargs):
+            remote_data = JSON.encode(kwargs)
             # TODO A check could be made if kwargs matches the call
             resp = self._request_context_manager.post(
                 interface=self._iface,
                 actual_method_name=actual_method_name,
                 path=path,
-                remote_data=json.dumps(kwargs).encode('UTF-8'),
+                remote_data=remote_data,
                 local_data=kwargs)
             if resp and isinstance(resp, bytes):
                 # comes from remote
@@ -273,8 +256,7 @@ class RestResourceEndPoint(EndPoint):
         self._request_context_manager.post(interface=self._iface,
                                            actual_method_name='update',
                                            path=path,
-                                           remote_data=self.codec.encode(
-                                               resource),
+                                           remote_data=resource,
                                            local_data={
                                                'res_id': res_id,
                                                'resource': resource})
