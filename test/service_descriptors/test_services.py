@@ -7,7 +7,7 @@ from wsgiref import simple_server
 import requests
 
 from pyservices.service_descriptors.frameworks import FalconApp
-from pyservices.service_descriptors.service_connector import create_service_connector
+from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utilities.exceptions import ClientException
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.service import AccountManager

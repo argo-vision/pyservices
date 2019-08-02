@@ -4,8 +4,7 @@ import importlib
 import copy
 
 from pyservices.service_descriptors.layer_supertypes import Service
-from pyservices.service_descriptors.service_connector import \
-    create_service_connector
+from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
 from pyservices.context import Context

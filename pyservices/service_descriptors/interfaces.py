@@ -38,7 +38,7 @@ class HTTPInterface(InterfaceBase):
     """
 
     @classmethod
-    def _get_endpoint_name(cls):
+    def get_endpoint_name(cls):
         return cls.if_path
 
 
@@ -119,7 +119,7 @@ class RestResourceInterface(HTTPInterface):
         pass
 
     @classmethod
-    def _get_endpoint_name(cls):
+    def get_endpoint_name(cls):
         return cls.if_path or f'{cls.meta_model.name.lower()}s'
 
     def _get_calls(self):

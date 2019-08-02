@@ -97,7 +97,7 @@ class FalconApp(FrameworkApp):
             self.methods = iface._get_calls()
 
         def generate(self):
-            path = type(self.iface)._get_endpoint_name()
+            path = type(self.iface).get_endpoint_name()
             res = dict()
             for method in self.methods.values():
                 res_path = f'{path}/{method.path}'
@@ -282,7 +282,7 @@ class FalconApp(FrameworkApp):
             resp.status = falcon.HTTP_200
 
         def generate(self):
-            path = type(self.iface)._get_endpoint_name()
+            path = type(self.iface).get_endpoint_name()
             res = dict()
             res[path] = type(f'REST{self.meta_model.name}s', (object,), {
                 'on_get': self._resource_collection_get,
