@@ -7,19 +7,20 @@ from wsgiref import simple_server
 import requests
 
 from pyservices.service_descriptors.frameworks import FalconApp
+from pyservices.service_descriptors.service_connector import create_service_connector
 from pyservices.utilities.exceptions import ClientException
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.service import AccountManager
 
 address = '0.0.0.0'
 port = 8080
-base_path = f'http://{address}:{port}/{AccountManager.service_base_path}'
+base_path = f'http://localhost:{port}/{AccountManager.service_base_path}'
 
 
 class TestRestServer(unittest.TestCase):
 
     def setUp(self):
-        service = AccountManager({})
+        service = AccountManager()
 
         app_wrapper = FalconApp()  # TODO the only WSGI framework implemented
         app_wrapper.register_route(service)
@@ -27,8 +28,7 @@ class TestRestServer(unittest.TestCase):
         t = Thread(target=self.httpd.serve_forever)
         t.start()
 
-        self.client_proxy = RestGenerator.get_client_proxy(address, str(port),
-                                                           AccountManager)
+        self.client_proxy = create_service_connector(service, base_path)
 
     def tearDown(self):
         self.httpd.shutdown()
@@ -107,10 +107,10 @@ class TestRestServer(unittest.TestCase):
 
     def testHTTPRPCEmptyRequest(self):
         resp = requests.post(base_path + '/notes-op/empty')
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 404)
 
     def testClientResourceGetCollection(self):
-        coll = self.client_proxy.interfaces.account_interface.collect()
+        coll = self.client_proxy.account_interface.collect()
         for el in coll:
             self.assertTrue(isinstance(el, Account))
 
@@ -122,27 +122,27 @@ class TestRestServer(unittest.TestCase):
             {'friends_number': 5443},  # match 3
             {'username': 'not_an_existent_username'},
             {'friends_number': 999999999}]
-        coll = self.client_proxy.interfaces.account_interface.collect(valid_params[0])
+        coll = self.client_proxy.account_interface.collect(valid_params[0])
         self.assertEqual(len(coll), 4)
 
-        coll = self.client_proxy.interfaces.account_interface.collect(valid_params[1])
+        coll = self.client_proxy.account_interface.collect(valid_params[1])
         self.assertEqual(len(coll), 2)
         for a in coll:
             self.assertEqual(a.username, 'second_account')
 
-        coll = self.client_proxy.interfaces.account_interface.collect(valid_params[2])
+        coll = self.client_proxy.account_interface.collect(valid_params[2])
         self.assertEqual(len(coll), 1)
         self.assertEqual(coll[0].email, 'second@email.com')
 
-        coll = self.client_proxy.interfaces.account_interface.collect(valid_params[3])
+        coll = self.client_proxy.account_interface.collect(valid_params[3])
         self.assertEqual(len(coll), 1)
         for a in coll:
             self.assertGreaterEqual(a.friends_number, 5443)
 
-        coll = self.client_proxy.interfaces.account_interface.collect(valid_params[4])
+        coll = self.client_proxy.account_interface.collect(valid_params[4])
         self.assertEqual(len(coll), 0)
 
-        coll = self.client_proxy.interfaces.account_interface.collect(valid_params[5])
+        coll = self.client_proxy.account_interface.collect(valid_params[5])
         self.assertEqual(len(coll), 0)
 
     def testClientResourceGetCollectionInvalidParams(self):
@@ -153,7 +153,7 @@ class TestRestServer(unittest.TestCase):
             'username=second_account&email&second@email.com']
         for i in range(2):
             try:
-                self.client_proxy.interfaces.account_interface.collect(illegal_params[i])
+                self.client_proxy.account_interface.collect(illegal_params[i])
             except ClientException:
                 continue
             else:
@@ -161,34 +161,34 @@ class TestRestServer(unittest.TestCase):
 
         for i in range(2, 4):
             try:
-                self.client_proxy.interfaces.account_interface.collect(illegal_params[i])
+                self.client_proxy.account_interface.collect(illegal_params[i])
             except TypeError:
                 continue
             else:
                 self.fail(f'{TypeError} is be expected.')
 
     def testClientResourceGetDetail(self):
-        detail = self.client_proxy.interfaces.account_interface.detail(1)
+        detail = self.client_proxy.account_interface.detail(1)
         self.assertTrue(isinstance(detail, Account))
 
     def testClientResourceAdd(self):
-        res_id = self.client_proxy.interfaces.account_interface.add(accounts[1])
+        res_id = self.client_proxy.account_interface.add(accounts[1])
         self.assertEqual(res_id, '123')
 
     def testClientResourceUpdate(self):
-        ret = self.client_proxy.interfaces.account_interface.update(
-            0, accounts[1])
+        res_id = self.client_proxy.account_interface.add(accounts[1])
+        ret = self.client_proxy.account_interface.update(res_id, accounts[1])
         self.assertTrue(ret)
 
     def testClientResourceDelete(self):
-        ret = self.client_proxy.interfaces.account_interface.delete(0)
+        ret = self.client_proxy.account_interface.delete(0)
         self.assertTrue(ret)
 
     def testClientRPCArgs(self):
-        self.client_proxy.interfaces.notes_op.check_args(arg1='arg1', arg2='arg2')
+        self.client_proxy.notes_op.check_args(arg1='arg1', arg2='arg2')
 
     def testClientRPCReturnValue(self):
-        note = self.client_proxy.interfaces.notes_op.get_note(note_id=0)
+        note = self.client_proxy.notes_op.get_note(note_id=0)
         self.assertEqual(note, 'my note')
 
 

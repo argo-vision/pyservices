@@ -175,5 +175,5 @@ class JSON(Codec):
     def decode(cls, value: str, meta_model: MetaModel):
         try:
             return dict_repr_to_instance(json.loads(value), meta_model)
-        except Exception:
-            raise CodecException('Error while decoding the data.')
+        except Exception as e:
+            raise CodecException('Error while decoding the data. {}'.format(e))

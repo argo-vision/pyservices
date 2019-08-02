@@ -61,6 +61,7 @@ class FalconApp(FrameworkApp):
         # register routes and resources
         for uri, r in resources.items():
             path = f'/{service.service_base_path}/{uri}'
+            logger.error("Adding route: {}".format(path))
             self.app.add_route(path, r())
 
         self._log_registered_urls()

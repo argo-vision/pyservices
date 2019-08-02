@@ -1,24 +1,71 @@
-import logging
-import re
 import abc
 import inspect
 import json
+import logging
+import re
 from collections import namedtuple
-from contextlib import contextmanager
 
 import requests
 
 from pyservices.data_descriptors.entity_codecs import Codec, JSON
-from pyservices.utilities.exceptions import ServiceException, ClientException, \
-    CodecException
-from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import RPCInterface, \
     RestResourceInterface
+from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.utilities.exceptions import ServiceException, ClientException, \
+    CodecException
 
 logger = logging.getLogger(__package__)
 
 
-@contextmanager
+class RemoteRequestCall:
+    def __init__(self):
+        pass
+
+    def put(self, **kwargs):
+        try:
+            resp = requests.put(kwargs['path'], data=kwargs.get('remote_data'), timeout=5)
+        except Exception:
+            raise ClientException('Exception on request')
+
+        self._check_message_status(resp)
+        return resp.headers['location'].split('/')[-1]
+
+    def delete(self, **kwargs):
+        try:
+            resp = requests.delete(kwargs['path'], data=kwargs.get('remote_data'), timeout=5)
+        except Exception:
+            raise ClientException('Exception on request')
+
+        self._check_message_status(resp)
+        return resp.content
+
+    def post(self, **kwargs):
+        try:
+            resp = requests.post(kwargs['path'], data=json.loads(kwargs.get('remote_data')), timeout=5)
+        except Exception:
+            raise ClientException('Exception on request')
+
+        self._check_message_status(resp)
+        return resp.content
+
+    def _check_message_status(self, resp):
+        if resp is not None and resp.status_code == 403:
+            raise ClientException('Forbidden request')
+        if resp is None:
+            raise ClientException("Response is empty")
+        if not str(resp.status_code).startswith('2'):
+            raise ClientException("Not a 2xx")
+
+    def get(self, **kwargs):
+        try:
+            resp = requests.get(kwargs['path'], params=kwargs.get('remote_data'), timeout=5)
+        except Exception:
+            raise ClientException('Exception on request')
+
+        self._check_message_status(resp)
+        return resp.content
+
+
 def remote_request_call(http_method, path, remote_data=None, **kwargs):
     """ Wrapper used to perform requests and checks. TODO
     """
@@ -32,19 +79,19 @@ def remote_request_call(http_method, path, remote_data=None, **kwargs):
         raise ClientException('Forbidden request')
     if resp is None:
         raise ClientException("Response is empty")
-    yield resp.content
+    if not str(resp.status_code).startswith('2'):
+        raise ClientException("Not a 2xx")
+    return resp.content
 
 
-@contextmanager
-def local_request_call(interface, actual_method_name, local_data=None,
-                       **kwargs):
+def local_request_call(interface, actual_method_name, local_data=None, **kwargs):
     try:
         method = getattr(interface, actual_method_name)
         data = method(**local_data)
     except Exception:
         # TODO
         raise Exception
-    yield data
+    return data
 
 
 def create_service_connector(service, service_location: str, codec=JSON):
@@ -104,8 +151,8 @@ class EndPoint(abc.ABC):
             self._request_context_manager = local_request_call
             self._iface_location = service_location
         else:
-            self._request_context_manager = remote_request_call
             self._iface_location = f'{service_location}/{iface._get_endpoint_name()}'
+            self._request_context_manager = RemoteRequestCall()
         self._iface = iface
 
 
@@ -118,19 +165,18 @@ class RPCEndPoint(EndPoint):
 
         def RPC_request(**kwargs):
             # TODO A check could be made if kwargs matches the call
-            with self._request_context_manager(
-                    http_method=http_method,
-                    interface=self._iface,
-                    actual_method_name=actual_method_name,
-                    path=path,
-                    remote_data=json.dumps(kwargs).encode('UTF-8'),
-                    local_data=kwargs) as resp:
-                if resp and isinstance(resp, bytes):
-                    # comes from remote
-                    return json.loads(resp)
-                else:
-                    # comes from local
-                    return resp
+            resp = self._request_context_manager.post(
+                interface=self._iface,
+                actual_method_name=actual_method_name,
+                path=path,
+                remote_data=json.dumps(kwargs).encode('UTF-8'),
+                local_data=kwargs)
+            if resp and isinstance(resp, bytes):
+                # comes from remote
+                return json.loads(resp)
+            else:
+                # comes from local
+                return resp
 
         return RPC_request
 
@@ -172,13 +218,12 @@ class RestResourceEndPoint(EndPoint):
                     raise TypeError(f'The param values cannot contain '
                                     f'{illegal_params_re.pattern}.')
 
-        with self._request_context_manager(
-                http_method=requests.get, interface=self._iface,
-                actual_method_name='collect', remote_data=params,
-                local_data=params, path=self._iface_location) as resp:
-            if self._check_instances(resp, self.meta_model.get_class()):
-                return resp
-            return self.codec.decode(resp, self.meta_model)
+        resp = self._request_context_manager.get(interface=self._iface,
+            actual_method_name='collect', remote_data=params,
+            local_data=params, path=self._iface_location)
+        if self._check_instances(resp, self.meta_model.get_class()):
+            return resp
+        return self.codec.decode(resp, self.meta_model)
 
     def detail(self, res_id):
         # FIXME: this should be a primary key for the model, NOT DICT!
@@ -186,27 +231,24 @@ class RestResourceEndPoint(EndPoint):
             res_id = '/'.join(res_id.values())
 
         path = f'{self._iface_location}/{res_id}'
-        with self._request_context_manager(
-                http_method=requests.get, interface=self._iface,
-                actual_method_name='detail', local_data={'res_id': res_id},
-                path=path) as resp:
-            if self._check_instances(resp, self.meta_model.get_class()):
-                return resp
-            return self.codec.decode(resp, self.meta_model)
+        resp = self._request_context_manager.get(interface=self._iface,
+                                                 actual_method_name='detail', local_data={'res_id': res_id},
+                                                 path=path)
+        if self._check_instances(resp, self.meta_model.get_class()):
+            return resp
+        return self.codec.decode(resp, self.meta_model)
 
     def add(self, resource):
         if not self._check_instances(resource, self.meta_model.get_class()):
             raise ValueError('Expected a {}'.format(self.meta_model.name))
         logger.info("Put on {}".format(self._iface_location))
-        with self._request_context_manager(http_method=requests.put,
-                                          interface=self._iface,
-                                          actual_method_name='add',
-                                          path=self._iface_location,
-                                          remote_data=self.codec.encode(
-                                              resource),
-                                          local_data=resource) \
-                as resp:
-            return resp
+        return self._request_context_manager.put(
+                                             interface=self._iface,
+                                             actual_method_name='add',
+                                             path=self._iface_location,
+                                             remote_data=self.codec.encode(
+                                                 resource),
+                                             local_data=resource)
 
     def delete(self, res_id):
         # FIXME: this should be a primary key for the model, NOT DICT!
@@ -214,11 +256,10 @@ class RestResourceEndPoint(EndPoint):
             res_id = "/".join(res_id.values())
 
         path = f'{self._iface_location}/{res_id}'
-        with self._request_context_manager(
-                http_method=requests.delete, interface=self._iface,
-                actual_method_name='delete', local_data=res_id,
-                path=path) as resp:
-            return True
+        self._request_context_manager.delete(interface=self._iface,
+            actual_method_name='delete', local_data=res_id,
+            path=path)
+        return True
 
     def update(self, res_id, resource):
         if not isinstance(resource, self.meta_model.get_class()):
@@ -228,17 +269,16 @@ class RestResourceEndPoint(EndPoint):
             res_id = "/".join(res_id.values())
         resource = self.codec.encode(resource)
         path = f'{self._iface_location}/{res_id}'
-        with self._request_context_manager(http_method=requests.post,
-                                          interface=self._iface,
-                                          actual_method_name='update',
-                                          path=path,
-                                          remote_data=self.codec.encode(
-                                              resource),
-                                          local_data={
-                                              'res_id': res_id,
-                                              'resource': resource}) \
-                as resp:
-            return True
+
+        self._request_context_manager.post(interface=self._iface,
+                                           actual_method_name='update',
+                                           path=path,
+                                           remote_data=self.codec.encode(
+                                               resource),
+                                           local_data={
+                                               'res_id': res_id,
+                                               'resource': resource})
+        return True
 
     @staticmethod
     def _check_instances(resource, resource_class):
