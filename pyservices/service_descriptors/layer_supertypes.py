@@ -12,7 +12,6 @@ class Service:
         """ Initialize the service instance.
 
         """
-        self.dependencies = {}
         self.interface_descriptors = self._initialize_descriptors()
 
     def _initialize_descriptors(self):
@@ -26,9 +25,6 @@ class Service:
         """
 
         return tuple(if_desc(self) for if_desc in self.interfaces())
-
-    def add_connector(self, dependent_service_name, connector):
-        self.dependencies[dependent_service_name] = connector
 
     @classmethod
     def interfaces(cls):

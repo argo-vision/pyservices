@@ -46,7 +46,7 @@ class Context:
 
     def register(self, key, component):
         if isinstance(component, Service):
-            create_service_connector(component.__class__, component)
+            self._state[key] = create_service_connector(component.__class__, component)
         else:
             self._state[key] = component
 
