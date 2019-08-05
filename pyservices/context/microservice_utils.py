@@ -10,7 +10,7 @@ class MicroServiceConfiguration:
             self.name = MicroServiceConfiguration._current_microservice_name()
         else:
             self.name = name
-        if conf.get(name) is None:
+        if conf.get(self.name) is None:
             raise ValueError("Cannot find service")
         self.conf = conf
 

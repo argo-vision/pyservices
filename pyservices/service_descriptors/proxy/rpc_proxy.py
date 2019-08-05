@@ -20,8 +20,8 @@ class RemoteRPCRequestCall:
         try:
             # FIXME: this is really bad
             resp = requests.post(self.path(path), json=data, timeout=5)
-        except Exception:
-            raise ClientException('Exception on request')
+        except Exception as e:
+            raise ClientException('Exception on post request to'.format(path))
 
         self._check_message_status(resp)
         return json.loads(resp.content) if resp.content else None
@@ -29,8 +29,8 @@ class RemoteRPCRequestCall:
     def get(self, path, data):
         try:
             resp = requests.get(self.path(path), params=data, timeout=5)
-        except Exception:
-            raise ClientException('Exception on request')
+        except Exception as e:
+            raise ClientException('Exception on get request to {}'.format(path))
 
         self._check_message_status(resp)
         return json.loads(resp.content) if resp.content else None

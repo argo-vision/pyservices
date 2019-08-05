@@ -24,7 +24,8 @@ class Service:
             A list of tuples of the descriptors initialized.
         """
 
-        return tuple(if_desc(self) for if_desc in self.interfaces())
+        interfaces = self.interfaces()
+        return tuple(if_desc(self) for if_desc in interfaces)
 
     @classmethod
     def interfaces(cls):
