@@ -1,15 +1,15 @@
 from pyservices.context import Context
+from pyservices.data_descriptors.meta_model import MetaModel
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import RestResourceInterface, \
     RPCInterface
 
-from pyservices.data_descriptors.meta_model import MetaModel
 from pyservices.data_descriptors.fields import StringField
 
 COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.frameworks']
 COMPONENT_KEY = __name__
 
-note_mm = MetaModel('Note', StringField('title'), StringField('content'),
+note_mm = MetaModel('MyNote', StringField('title'), StringField('content'),
                     primary_key_name='title')
 
 my_notes = [note_mm.get_class()('My title', 'My content')]

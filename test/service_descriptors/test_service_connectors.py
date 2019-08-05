@@ -36,7 +36,7 @@ class ServiceConnectorTest(unittest.TestCase):
     def testServiceConnectorLocal(self):
         s = Service1()
         connector = create_service_connector(Service1, s)
-        note = connector.notes.detail(123)
+        note = connector.mynotes.detail(123)
         self.assertTrue(isinstance(note, note_mm.get_class()))
         content = connector.notes_op.read_note()
         self.assertEqual(note.content, content)
@@ -49,7 +49,7 @@ class ServiceConnectorTest(unittest.TestCase):
         t = Thread(target=httpd.serve_forever)
         t.start()
         connector = create_service_connector(Service1, base_path_service1)
-        note = connector.notes.detail(123)
+        note = connector.mynotes.detail(123)
         self.assertTrue(isinstance(note, note_mm.get_class()))
         content = connector.notes_op.read_note()
         self.assertEqual(note.content, content)
