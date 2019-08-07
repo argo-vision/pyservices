@@ -95,7 +95,7 @@ class FalconApp(FrameworkApp):
         def __init__(self, iface):
             self.iface = iface
             # name: method
-            self.methods = iface.get_calls()
+            self.methods = iface._get_instance_calls()
 
         def generate(self):
             path = type(self.iface).get_endpoint_name()
@@ -148,7 +148,7 @@ class FalconApp(FrameworkApp):
             self.iface = iface
             self.meta_model = iface.meta_model
             self.codec = iface.codec or entity_codecs.JSON
-            methods = iface.get_calls()
+            methods = iface._get_instance_calls()
             self.collect = methods.get('collect')
             self.add = methods.get('add')
             self.detail = methods.get('detail')

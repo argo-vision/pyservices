@@ -3,7 +3,7 @@ import logging
 
 # from .decorators import rest_add, rest_collection, rest_delete, \
 #     rest_detail, rest_update
-from pyservices.data_descriptors.entity_codecs import JSON, Codec
+from pyservices.data_descriptors.entity_codecs import JSON
 from pyservices.service_descriptors import frameworks, http_content_types
 
 log = logging.getLogger(__package__)

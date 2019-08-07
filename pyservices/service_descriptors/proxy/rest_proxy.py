@@ -119,11 +119,11 @@ class RemoteRestRequestCall(RestEndPoint):
         return JSON.decode(resp.content, self.model)
 
 
-# FIXME: mayube not all this functions are implemented
+# FIXME: maybe not all this functions are implemented
 class LocalRestRequestCall(RestEndPoint):
     def __init__(self, instance):
 
-        methods = instance.get_calls()
+        methods = instance._get_instance_calls()
         self._collect = methods.get('collect')
         self._add = methods.get('add')
         self._detail = methods.get('detail')

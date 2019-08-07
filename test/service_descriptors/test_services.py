@@ -34,6 +34,7 @@ class TestRestServer(unittest.TestCase):
         self.httpd.shutdown()
         self.httpd.server_close()
 
+
     def testHTTPGetResource(self):
         resp = requests.get(base_path + '/account-interface/1')
         self.assertEqual(resp.status_code, 200)
