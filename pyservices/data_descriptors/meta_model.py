@@ -1,4 +1,6 @@
 import copy
+import inspect
+
 from typing import Optional
 
 import pyservices as ps
@@ -167,7 +169,8 @@ class MetaModel:
             return instance
 
         return type(self.name, (object,), {
-            '__new__': new
+            '__new__': new,
+            '__eq__': _meta_model_equality
         })
 
     def validate_id(self, **kwargs):
@@ -203,6 +206,17 @@ class MetaModel:
 
     def __repr__(self):
         return '<MetaModel {}:{}>'.format(self.name, self.fields)
+
+
+def _meta_model_equality(self, other):
+    if not isinstance(other, type(self)):
+        return False
+    from pyservices.data_descriptors.entity_codecs import instance_attributes
+    fields = instance_attributes(self)
+    for f in fields:
+        if getattr(self, f) != getattr(other, f):
+            return False
+    return True
 
 
 from pyservices.data_descriptors.fields import *
