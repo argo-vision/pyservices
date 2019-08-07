@@ -55,12 +55,8 @@ class HTTPInterface(InterfaceBase):
             List of InterfaceOperationDescriptor objects.
         """
 
-        methods = self._get_instance_calls(self)
-        interface_operations_list = [InterfaceOperationDescriptor(self, method, method.http_method) for method in methods]
-        return interface_operations_list
-
     @classmethod
-    def get_endpoint_name(cls):
+    def _get_endpoint_name(cls):
         return cls.if_path
 
 
@@ -164,7 +160,7 @@ class RestResourceInterface(HTTPInterface):
         pass
 
     @classmethod
-    def get_endpoint_name(cls):
+    def _get_endpoint_name(cls):
         return cls.if_path or f'{cls.meta_model.name.lower()}s'
 
     def _get_instance_calls(self):
@@ -199,8 +195,16 @@ class RPCInterface(HTTPInterface):
         return {n: RPC()(c) for n, c in super()._get_class_calls().items()}
 
     def _get_http_operations(self):
-        # TODO: Use _get_instance_calls and
-        return []
+        """
+        Inspects type(self) and generates the list of operations that can be exposed by the framework-app.
+
+        Returns:
+            List of InterfaceOperationDescriptor objects.
+        """
+
+        methods = self._get_instance_calls()
+        interface_operations_list = [InterfaceOperationDescriptor(self, method, method.http_method) for _, method in methods.items()]
+        return interface_operations_list
 
 
 # TODO this decorator could be generalized for every HTTP call
@@ -218,7 +222,7 @@ def RPC(path=None, method="POST"):
         def wrapped_rpc_call(*args, **kwargs):
             return func(*args, **kwargs)
 
-        wrapped_rpc_call.method = method.lower()
+        wrapped_rpc_call.http_method = method.lower()
         wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
         return wrapped_rpc_call
 

@@ -165,7 +165,7 @@ class RestDispatcherEndPoint(RestEndPoint):
         """ Initialize the rest resource end point.
         """
         if type(service_location) == str:
-            iface_location = f'{service_location}/{iface.get_endpoint_name()}'
+            iface_location = f'{service_location}/{iface._get_endpoint_name()}'
             self._request_handler = RemoteRestRequestCall(iface_location, iface.meta_model)
         else:
             self._request_handler = LocalRestRequestCall(service_location)

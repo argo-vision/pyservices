@@ -11,6 +11,7 @@ from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utilities.exceptions import ClientException
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.service import AccountManager
+from test.service_descriptors.components.raw_interfaces import TestRPCInterface
 
 address = '0.0.0.0'
 port = 8080
@@ -33,6 +34,10 @@ class TestRestServer(unittest.TestCase):
     def tearDown(self):
         self.httpd.shutdown()
         self.httpd.server_close()
+
+    def testHTTPGetHTTPOperations(self):
+        test_interface = TestRPCInterface(None)
+        methods = test_interface._get_http_operations()
 
 
     def testHTTPGetResource(self):

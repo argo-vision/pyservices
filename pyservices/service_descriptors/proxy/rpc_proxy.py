@@ -69,12 +69,12 @@ class RPCDispatcherEndPoint(EndPoint):
 
     def __init__(self, iface, service_location):
         if type(service_location) == str:
-            iface_location = f'{service_location}/{iface.get_endpoint_name()}'
+            iface_location = f'{service_location}/{iface._get_endpoint_name()}'
             self._request_handler = RemoteRPCRequestCall(iface_location)
             calls = iface._get_class_calls()
             for rpc in calls.values():
                 name = rpc.path.replace('-', '_')
-                if rpc.method == 'post':
+                if rpc.http_method == 'post':
                     call = self._request_handler.post
                 else:
                     call = self._request_handler.get

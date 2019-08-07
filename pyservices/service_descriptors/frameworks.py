@@ -98,14 +98,14 @@ class FalconApp(FrameworkApp):
             self.methods = iface._get_instance_calls()
 
         def generate(self):
-            path = type(self.iface).get_endpoint_name()
+            path = type(self.iface)._get_endpoint_name()
             res = dict()
             for method in self.methods.values():
                 res_path = f'{path}/{method.path}'
-                logger.error("Creating {} - {}".format(res_path, method.method))
+                logger.error("Creating {} - {}".format(res_path, method.http_method))
                 res[res_path] = \
                     type(f'RPC{method.path}', (object,),
-                         {f'on_{method.method}': FalconApp.
+                         {f'on_{method.http_method}': FalconApp.
                          RPCResourceGenerator._falcon_rpc_wrapper(method)})
             return res
 
@@ -114,11 +114,11 @@ class FalconApp(FrameworkApp):
             @wraps(call)
             def falcon_handler(inner_self, req, res):
                 try:
-                    if call.method in ["put", "post"]:
+                    if call.http_method in ["put", "post"]:
                         data = req.stream.read()
                         rpc_params = json.loads(data) if data else {}
 
-                    elif call.method == "get":
+                    elif call.http_method == "get":
                         rpc_params = req.params
                     else:
                         raise NotImplementedError()
@@ -283,7 +283,7 @@ class FalconApp(FrameworkApp):
             resp.status = falcon.HTTP_200
 
         def generate(self):
-            path = type(self.iface).get_endpoint_name()
+            path = type(self.iface)._get_endpoint_name()
             res = dict()
             res[path] = type(f'REST{self.meta_model.name}s', (object,), {
                 'on_get': self._resource_collection_get,
