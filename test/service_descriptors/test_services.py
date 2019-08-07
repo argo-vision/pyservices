@@ -7,11 +7,12 @@ from wsgiref import simple_server
 import requests
 
 from pyservices.service_descriptors.frameworks import FalconApp
+from pyservices.service_descriptors.interfaces import InterfaceOperationDescriptor
 from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utilities.exceptions import ClientException
 from test.data_descriptors.meta_models import *
-from test.service_descriptors.service import AccountManager
 from test.service_descriptors.components.raw_interfaces import TestRPCInterface
+from test.service_descriptors.service import AccountManager
 
 address = '0.0.0.0'
 port = 8080
@@ -38,7 +39,9 @@ class TestRestServer(unittest.TestCase):
     def testHTTPGetHTTPOperations(self):
         test_interface = TestRPCInterface(None)
         methods = test_interface._get_http_operations()
-
+        self.assertIsInstance(methods, list)
+        for x in methods:
+            self.assertIsInstance(x, InterfaceOperationDescriptor)
 
     def testHTTPGetResource(self):
         resp = requests.get(base_path + '/account-interface/1')

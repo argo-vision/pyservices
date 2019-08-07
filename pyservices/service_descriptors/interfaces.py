@@ -1,11 +1,14 @@
 import abc
 import inspect
+import logging
 from enum import Enum
 from functools import wraps
 from typing import NamedTuple
 
 from pyservices import JSON
 from pyservices.data_descriptors.entity_codecs import Codec
+
+logger = logging.getLogger(__package__)
 
 
 class InterfaceBase(abc.ABC):
@@ -46,7 +49,6 @@ class HTTPInterface(InterfaceBase):
 
     """
 
-    @abc.abstractmethod
     def _get_http_operations(self):
         """
         Inspects type(self) and generates the list of operations that can be exposed by the framework-app.
@@ -54,6 +56,13 @@ class HTTPInterface(InterfaceBase):
         Returns:
             List of InterfaceOperationDescriptor objects.
         """
+
+        methods = self._get_http_operations()
+        interface_operations_list = [InterfaceOperationDescriptor(self, method, method.http_method,
+                                                                  '{}\\{}\\{}'.format(self.service.service_base_path,
+                                                                                    self._get_endpoint_name(),
+                                                                                    method.path)) for method in methods]
+        return interface_operations_list
 
     @classmethod
     def _get_endpoint_name(cls):
@@ -194,20 +203,7 @@ class RPCInterface(HTTPInterface):
         """ TODO Actual remote procedure calls (with self etc..) """
         return {n: RPC()(c) for n, c in super()._get_class_calls().items()}
 
-    def _get_http_operations(self):
-        """
-        Inspects type(self) and generates the list of operations that can be exposed by the framework-app.
 
-        Returns:
-            List of InterfaceOperationDescriptor objects.
-        """
-
-        methods = self._get_instance_calls()
-        interface_operations_list = [InterfaceOperationDescriptor(self, method, method.http_method) for _, method in methods.items()]
-        return interface_operations_list
-
-
-# TODO this decorator could be generalized for every HTTP call
 def RPC(path=None, method="POST"):
     """
     Decorator remote procedure calls (idempotent)

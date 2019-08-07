@@ -14,8 +14,7 @@ import abc
 from pyservices.data_descriptors import entity_codecs
 from pyservices.data_descriptors.fields import ComposedField
 from pyservices.utilities.exceptions import HTTPNotFound
-from pyservices.service_descriptors.interfaces import RestResourceInterface, \
-    RPCInterface, HTTPInterface
+from pyservices.service_descriptors.interfaces import RestResourceInterface, RPCInterface, HTTPInterface
 from pyservices.context import Context
 
 COMPONENT_DEPENDENCIES = []
@@ -36,6 +35,7 @@ class FrameworkApp(abc.ABC):
 
     def __init__(self):
         # TODO log
+        self.RPCResourceGenerator = None
         self.app = None
 
     # FIXME pyservices as component, register_services (not routes)
@@ -95,7 +95,7 @@ class FalconApp(FrameworkApp):
         def __init__(self, iface):
             self.iface = iface
             # name: method
-            self.methods = iface._get_instance_calls()
+            self.methods = iface._get_http_methods()
 
         def generate(self):
             path = type(self.iface)._get_endpoint_name()
@@ -106,11 +106,11 @@ class FalconApp(FrameworkApp):
                 res[res_path] = \
                     type(f'RPC{method.path}', (object,),
                          {f'on_{method.http_method}': FalconApp.
-                         RPCResourceGenerator._falcon_rpc_wrapper(method)})
+                         RPCResourceGenerator.falcon_rpc_wrapper(method)})
             return res
 
         @staticmethod
-        def _falcon_rpc_wrapper(call):
+        def falcon_rpc_wrapper(call):
             @wraps(call)
             def falcon_handler(inner_self, req, res):
                 try:
@@ -133,7 +133,7 @@ class FalconApp(FrameworkApp):
                 except Exception as e:  # TODO be more precise, exception translations #23
                     res.status = falcon.HTTP_500
 
-            return falcon_handler
+            return {f'on_{call.http_method}': falcon_handler}
 
     class RestResourceGenerator:
         """Builder class used to produce Falcon-like REST Resources."""
