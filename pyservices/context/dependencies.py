@@ -58,6 +58,7 @@ def topological_sort(graph):
             edge = remaining.pop()
 
 
+# FIXME module as string or "component"
 def components_graph(graph, component):
     try:
         module = importlib.import_module(component)
@@ -115,6 +116,7 @@ def destructive_dfs(graph: dict, edge: str, visit: list):
         graph.pop(edge)
 
 
+# FIXME move
 def create_application(conf):
     ctx = Context()
     components = conf.sorted_dependencies()
@@ -126,7 +128,7 @@ def create_application(conf):
             ctx.register(m.COMPONENT_KEY,remote_service)
         else:
             m.register_component(ctx)
-    # _inject_dependencies(ctx.get_services(), conf)
+    # _inject_dependencies(ctx.get_services(), conf) TODO connectors_injections
     ctx.startup()
     return ctx.get_app()
 

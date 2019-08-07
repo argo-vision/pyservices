@@ -45,6 +45,7 @@ class Context:
         self._state[self.APP_KEY] = None
 
     def register(self, key, component):
+
         if isinstance(component, Service):
             self._state[key] = create_service_connector(component.__class__, component)
         else:

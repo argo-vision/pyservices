@@ -63,7 +63,6 @@ class AccountManager(Service):
         def delete(self, res_id):
             assert type(res_id) is int
 
-
     class Note(RestResourceInterface):
         meta_model = NoteMM
 

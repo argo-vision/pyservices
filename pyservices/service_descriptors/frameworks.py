@@ -28,7 +28,7 @@ FALCON = 'falcon'
 
 
 # FIXME document, rename as App in Wrapper?
-# FIXME Falcon generators can be generalized
+# FIXME Falcon generators can be generalized -> interfaces must provide COMMON CLASS FOR CALLSname
 
 class FrameworkApp(abc.ABC):
     """ Base class for frameworks, it is used to crete WSGI applications.
@@ -38,6 +38,7 @@ class FrameworkApp(abc.ABC):
         # TODO log
         self.app = None
 
+    # FIXME pyservices as component, register_services (not routes)
     def register_route(self, service):
         pass
 

@@ -14,7 +14,7 @@ from test.service_descriptors.service import AccountManager
 
 address = '0.0.0.0'
 port = 8080
-base_path = f'http://localhost:{port}/{AccountManager.service_base_path}'
+base_path = f'http://{address}:{port}/{AccountManager.service_base_path}'
 
 
 class TestRestServer(unittest.TestCase):
