@@ -32,10 +32,9 @@ def register_component(ctx: Context):
 
 Gianluca Scarpellini - gianluca.scarpellini@argo.vision
 """
-
-import importlib
-
-from pyservices.utilities.exceptions import ComponentNotFoundException
+from pyservices.service_descriptors.proxy import create_service_connector
+from pyservices.utilities.exceptions import ComponentNotFound
+from pyservices.service_descriptors.layer_supertypes import Service
 
 
 class Context:
@@ -43,14 +42,19 @@ class Context:
         self._state = dict()
         self._startup_functions = []
         self.APP_KEY = "APP"
+        self._state[self.APP_KEY] = None
 
     def register(self, key, component):
-        self._state[key] = component
+
+        if isinstance(component, Service):
+            self._state[key] = create_service_connector(component.__class__, component)
+        else:
+            self._state[key] = component
 
     def register_app(self, app):
         self._state[self.APP_KEY] = app
 
-    def get_app(self ):
+    def get_app(self):
         return self._state[self.APP_KEY]
 
     def register_startup(self, function: callable):
@@ -60,48 +64,18 @@ class Context:
         try:
             self.get_component(key)
             return True
-        except ComponentNotFoundException:
+        except ComponentNotFound:
             return False
 
     def get_component(self, key):
         try:
             return self._state[key]
         except Exception:
-            raise ComponentNotFoundException()
+            raise ComponentNotFound('Cannot find {}'.format(key))
+
+    def get_services(self):
+        return {k: v for k, v in self._state.items() if isinstance(v, Service)}
 
     def startup(self):
         for function in self._startup_functions:
             function(self)
-
-
-def _compose(ctx: Context, components: list, registered: list):
-    """
-    :param ctx: context of the implementation
-    :param components: list of components to be added
-
-    For each component, it launch its registration function as well as the
-    registration function of its
-    COMPONENT DEPENDENCIES
-    """
-
-    if components is None or len(components) == 0:
-        return
-
-    component = components.pop()
-
-    if component not in registered:
-        module = importlib.import_module(component)
-        dependencies: list = module.COMPONENT_DEPENDENCIES
-        _compose(ctx, dependencies, registered)
-        module.register_component(ctx)
-        registered.append(component)
-    _compose(ctx, components, registered)
-    return
-
-
-def create_application(conf):
-    ctx = Context()
-    _compose(ctx, conf['components'], [])
-    ctx.startup()
-    return ctx.get_app()
-

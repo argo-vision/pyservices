@@ -1,1 +1,1 @@
-from .context import Context, create_application
+from .context import Context

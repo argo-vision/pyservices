@@ -1,13 +1,33 @@
-from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import RPC, \
     RestResourceInterface, RPCInterface
-from pyservices.data_descriptors.entity_codecs import JSON
+from pyservices.service_descriptors.layer_supertypes import Service
 from test.data_descriptors.meta_models import *
 
 
 class AccountManager(Service):
     service_base_path = 'account-manager'
     if_path = 'notes'  # NOTE: shared with RPC
+
+    class NotesOperations(RPCInterface):
+        if_path = 'notes-op'  # NOTE: shared with REST
+
+        def __init__(self, service):
+            super().__init__(service)
+            self.arg1 = 'arg1'
+            self.arg2 = 'arg2'
+            self.notes = ['my note']
+
+        @RPC(method="get")
+        def check_args(self, arg1, arg2):
+            assert(arg1 == self.arg1)
+            assert(arg2 == self.arg2)
+
+        @RPC(method="post")
+        def no_args(self):
+            assert True
+
+        def get_note(self, note_id):
+            return self.notes[note_id]
 
     class Account(RestResourceInterface):
         meta_model = AccountMM
@@ -42,23 +62,6 @@ class AccountManager(Service):
 
         def delete(self, res_id):
             assert type(res_id) is int
-
-    class NotesOperations(RPCInterface):
-        if_path = 'notes-op'  # NOTE: shared with REST
-
-        def __init__(self, service):
-            super().__init__(service)
-            self.arg1 = 'arg1'
-            self.arg2 = 'arg2'
-            self.notes = ['my note']
-
-        def check_args(self, arg1, arg2):
-            assert(arg1 == self.arg1)
-            assert(arg2 == self.arg2)
-
-        def get_note(self, note_id):
-            return self.notes[note_id]
-
 
     class Note(RestResourceInterface):
         meta_model = NoteMM

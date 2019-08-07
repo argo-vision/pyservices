@@ -1,6 +1,7 @@
 import pyservices as ps
 
 
+# TODO rename with Error/Exception in every name
 class PyservicesBaseException(Exception):
     """ Base exceptions for the module.
     """
@@ -44,21 +45,33 @@ class MetaTypeException(PyservicesBaseException):
     pass
 
 
-class HTTPExceptions(ServiceException):
+class HTTPException(ServiceException):
     """Error related to HTTP protocol.
     """
     pass
 
 
-class HTTPUnexpectedStatusCode(HTTPExceptions):
+class HTTPUnexpectedStatusCode(HTTPException):
     def __init__(self, status_code):
         super().__init__(f'Unexpected status code: {status_code}.')
 
 
-class HTTPNotFound(HTTPExceptions):
+class HTTPNotFound(HTTPException):
     def __init__(self):
         super().__init__(f'Resource not found.')
 
 
-class ComponentNotFoundException(Exception):
+class ComponentNotFound(PyservicesBaseException):
+    pass
+
+
+class ServiceNotFound(PyservicesBaseException):
+    pass
+
+
+class MicroServiceConfigurationError(PyservicesBaseException):
+    pass
+
+
+class ServiceDependenciesError(PyservicesBaseException):
     pass

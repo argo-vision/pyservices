@@ -162,6 +162,11 @@ class TestDataDescriptor(unittest.TestCase):
         for field in mm.fields:
             self.assertIsNone(getattr(empty_note, field.name))
 
+    def testMetaModelEquality(self):
+        note1 = NoteMM.get_class()('my_title', 'my_content')
+        note2 = NoteMM.get_class()('my_title', 'my_content')
+        self.assertEqual(note1, note2)
+
     def testPrimaryKeyValidation(self):
         id_mm = MetaModel('IdTestPrimaryKey',
                           StringField('name'),

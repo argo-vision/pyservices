@@ -1,4 +1,5 @@
 import unittest
+import copy
 
 from pyservices.data_descriptors.entity_codecs import *
 from pyservices.utilities.exceptions import MetaTypeException
@@ -41,6 +42,14 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(person_instance.person_name, 'my_person_name')
         self.assertEqual(person_instance.credentials.password, 'my_password')
         self.assertEqual(person_instance.address.city, 'my_city')
+
+    def test_dict_repr_to_instance_no_side_effects(self):
+        A = MetaModel('ANoSideEff', StringField('name'))
+        B = MetaModel('BNoSideEff', ListField('names', data_type=A, default=[]))
+        dict_repr = {"names": [{"name": "a"}]}
+        dict_repr_copy = copy.copy(dict_repr)
+        dict_repr_to_instance(dict_repr, B)
+        self.assertEqual(dict_repr, dict_repr_copy)
 
     def test_dict_repr_to_instance_sequence_field(self):
         instance = dict_repr_to_instance(

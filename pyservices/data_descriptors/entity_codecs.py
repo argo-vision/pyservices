@@ -1,4 +1,5 @@
 import abc
+import copy
 import datetime
 import json
 from typing import Union
@@ -64,6 +65,7 @@ def dict_repr_to_instance(val: Union[dict, list], meta_model: MetaModel):
     """
 
     # List of objects
+    val = copy.copy(val)
     if isinstance(val, list):
         return [dict_repr_to_instance(el, meta_model) for el in val]
 
@@ -175,5 +177,5 @@ class JSON(Codec):
     def decode(cls, value: str, meta_model: MetaModel):
         try:
             return dict_repr_to_instance(json.loads(value), meta_model)
-        except Exception:
-            raise CodecException('Error while decoding the data.')
+        except Exception as e:
+            raise CodecException('Error while decoding the data. {}'.format(e))

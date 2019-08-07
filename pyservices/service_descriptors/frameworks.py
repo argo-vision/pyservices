@@ -19,6 +19,7 @@ from pyservices.service_descriptors.interfaces import RestResourceInterface, \
 from pyservices.context import Context
 
 COMPONENT_DEPENDENCIES = []
+COMPONENT_KEY = __name__
 
 logger = logging.getLogger(__package__)
 
@@ -27,7 +28,7 @@ FALCON = 'falcon'
 
 
 # FIXME document, rename as App in Wrapper?
-# FIXME Falcon generators can be generalized
+# FIXME Falcon generators can be generalized -> interfaces must provide COMMON CLASS FOR CALLSname
 
 class FrameworkApp(abc.ABC):
     """ Base class for frameworks, it is used to crete WSGI applications.
@@ -37,6 +38,7 @@ class FrameworkApp(abc.ABC):
         # TODO log
         self.app = None
 
+    # FIXME pyservices as component, register_services (not routes)
     def register_route(self, service):
         pass
 
@@ -60,6 +62,7 @@ class FalconApp(FrameworkApp):
         # register routes and resources
         for uri, r in resources.items():
             path = f'/{service.service_base_path}/{uri}'
+            logger.error("Adding route: {}".format(path))
             self.app.add_route(path, r())
 
         self._log_registered_urls()
@@ -92,15 +95,17 @@ class FalconApp(FrameworkApp):
         def __init__(self, iface):
             self.iface = iface
             # name: method
-            self.methods = iface._get_calls()
+            self.methods = iface.get_calls()
 
         def generate(self):
-            path = type(self.iface)._get_endpoint_name()
+            path = type(self.iface).get_endpoint_name()
             res = dict()
             for method in self.methods.values():
-                res[f'{path}/{method.path}'] = \
+                res_path = f'{path}/{method.path}'
+                logger.error("Creating {} - {}".format(res_path, method.method))
+                res[res_path] = \
                     type(f'RPC{method.path}', (object,),
-                         {f'on_post': FalconApp.
+                         {f'on_{method.method}': FalconApp.
                          RPCResourceGenerator._falcon_rpc_wrapper(method)})
             return res
 
@@ -109,9 +114,18 @@ class FalconApp(FrameworkApp):
             @wraps(call)
             def falcon_handler(inner_self, req, res):
                 try:
-                    rpc_params = json.loads(req.stream.read())
+                    if call.method in ["put", "post"]:
+                        data = req.stream.read()
+                        rpc_params = json.loads(data) if data else {}
+
+                    elif call.method == "get":
+                        rpc_params = req.params
+                    else:
+                        raise NotImplementedError()
+
                     body = call(**rpc_params)
                     res.body = json.dumps(body) if body else None
+
                 except JSONDecodeError as e:
                     res.status = falcon.HTTP_400
                 except TypeError as e:
@@ -134,7 +148,7 @@ class FalconApp(FrameworkApp):
             self.iface = iface
             self.meta_model = iface.meta_model
             self.codec = iface.codec or entity_codecs.JSON
-            methods = iface._get_calls()
+            methods = iface.get_calls()
             self.collect = methods.get('collect')
             self.add = methods.get('add')
             self.detail = methods.get('detail')
@@ -269,7 +283,7 @@ class FalconApp(FrameworkApp):
             resp.status = falcon.HTTP_200
 
         def generate(self):
-            path = type(self.iface)._get_endpoint_name()
+            path = type(self.iface).get_endpoint_name()
             res = dict()
             res[path] = type(f'REST{self.meta_model.name}s', (object,), {
                 'on_get': self._resource_collection_get,

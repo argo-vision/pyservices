@@ -20,13 +20,13 @@ class InterfaceBase(abc.ABC):
     def __init__(self, service):
         self.service = service
 
-    def _get_calls(self):
+    def get_calls(self):
         return {method[0]: method[1] for method in inspect.getmembers(
             self, lambda m: inspect.ismethod(m))
                 if not method[0].startswith('_')}
 
     @classmethod
-    def _get_call_descriptors(cls):
+    def get_call_descriptors(cls):
         return {method[0]: method[1] for method in inspect.getmembers(
             cls, lambda m: inspect.isfunction(m))
                 if not method[0].startswith('_')}
@@ -38,7 +38,7 @@ class HTTPInterface(InterfaceBase):
     """
 
     @classmethod
-    def _get_endpoint_name(cls):
+    def get_endpoint_name(cls):
         return cls.if_path
 
 
@@ -119,11 +119,11 @@ class RestResourceInterface(HTTPInterface):
         pass
 
     @classmethod
-    def _get_endpoint_name(cls):
+    def get_endpoint_name(cls):
         return cls.if_path or f'{cls.meta_model.name.lower()}s'
 
-    def _get_calls(self):
-        methods = super()._get_calls()
+    def get_calls(self):
+        methods = super().get_calls()
         collect_methods_names = \
             filter(lambda k: k.startswith('collect'), methods)
         methods['collect'] = sorted(
@@ -136,18 +136,18 @@ class RPCInterface(HTTPInterface):
     """RPC interface used to perform remote procedure calls.
     """
 
-    def _get_calls(self):
+    def get_calls(self):
         """ TODO Actual remote procedure calls (with self etc..) """
-        return {n: RPC()(m) for n, m in super()._get_calls().items()}
+        return {n: RPC()(m) for n, m in super().get_calls().items()}
 
     @classmethod
-    def _get_call_descriptors(cls):
+    def get_call_descriptors(cls):
         """ TODO Actual remote procedure calls (with self etc..) """
-        return {n: RPC()(c) for n, c in super()._get_call_descriptors().items()}
+        return {n: RPC()(c) for n, c in super().get_call_descriptors().items()}
 
 
 # TODO this decorator could be generalized for every HTTP call
-def RPC(path=None):
+def RPC(path=None, method="POST"):
     """
     Decorator remote procedure calls (idempotent)
      TODO
@@ -160,6 +160,7 @@ def RPC(path=None):
         def wrapped_rpc_call(*args, **kwargs):
             return func(*args, **kwargs)
 
+        wrapped_rpc_call.method = method.lower()
         wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
         return wrapped_rpc_call
 
