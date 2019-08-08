@@ -1,21 +1,20 @@
+import abc
 import collections
 import inspect
 import itertools
-import logging
 import json
+import logging
 from functools import wraps
 from json.decoder import JSONDecodeError
 
 import falcon
 
 import pyservices as ps
-import abc
-
+from pyservices.context import Context
 from pyservices.data_descriptors import entity_codecs
 from pyservices.data_descriptors.fields import ComposedField
-from pyservices.utilities.exceptions import HTTPNotFound
 from pyservices.service_descriptors.interfaces import RestResourceInterface, RPCInterface, HTTPInterface
-from pyservices.context import Context
+from pyservices.utilities.exceptions import HTTPNotFound
 
 COMPONENT_DEPENDENCIES = []
 COMPONENT_KEY = __name__
@@ -35,7 +34,6 @@ class FrameworkApp(abc.ABC):
 
     def __init__(self):
         # TODO log
-        self.RPCResourceGenerator = None
         self.app = None
 
     # FIXME pyservices as component, register_services (not routes)
@@ -61,8 +59,8 @@ class FalconApp(FrameworkApp):
 
         # register routes and resources
         for uri, r in resources.items():
-            path = f'/{service.service_base_path}/{uri}'
-            logger.error("Adding route: {}".format(path))
+            logger.error("Adding route: {}".format(uri))
+            path = "/" + uri
             self.app.add_route(path, r())
 
         self._log_registered_urls()
@@ -95,15 +93,14 @@ class FalconApp(FrameworkApp):
         def __init__(self, iface):
             self.iface = iface
             # name: method
-            self.methods = iface._get_http_methods()
+            self.methods = iface._get_http_operations()
 
         def generate(self):
-            path = type(self.iface)._get_endpoint_name()
+            # path = type(self.iface)._get_endpoint_name()
             res = dict()
-            for method in self.methods.values():
-                res_path = f'{path}/{method.path}'
-                logger.error("Creating {} - {}".format(res_path, method.http_method))
-                res[res_path] = \
+            for method in self.methods:
+                logger.error("Creating {} - {}".format(method.path, method.http_method))
+                res[method.path] = \
                     type(f'RPC{method.path}', (object,),
                          {f'on_{method.http_method}': FalconApp.
                          RPCResourceGenerator.falcon_rpc_wrapper(method)})

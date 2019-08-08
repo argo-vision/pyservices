@@ -57,11 +57,12 @@ class HTTPInterface(InterfaceBase):
             List of InterfaceOperationDescriptor objects.
         """
 
-        methods = self._get_http_operations()
+        methods = self._get_instance_calls()
         interface_operations_list = [InterfaceOperationDescriptor(self, method, method.http_method,
-                                                                  '{}\\{}\\{}'.format(self.service.service_base_path,
-                                                                                    self._get_endpoint_name(),
-                                                                                    method.path)) for method in methods]
+                                                                  '{}/{}/{}'.format(self.service.service_base_path,
+                                                                                      self._get_endpoint_name(),
+                                                                                      method.path)) for _, method in
+                                     methods.items()]
         return interface_operations_list
 
     @classmethod
