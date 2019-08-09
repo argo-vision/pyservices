@@ -19,8 +19,8 @@ class AccountManager(Service):
 
         @RPC(method="get")
         def check_args(self, arg1, arg2):
-            assert(arg1 == self.arg1)
-            assert(arg2 == self.arg2)
+            assert (arg1 == self.arg1)
+            assert (arg2 == self.arg2)
 
         @RPC(method="post")
         def no_args(self):

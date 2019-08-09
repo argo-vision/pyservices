@@ -16,4 +16,10 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
+    install_requires=[
+        "persist-queue==0.4.1",
+        "falcon==1.4.1",
+        "pymongo==3.7.2",
+        "requests==2.21.0"
+    ]
 )
