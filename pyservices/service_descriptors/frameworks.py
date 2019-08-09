@@ -114,7 +114,7 @@ class FalconApp(FrameworkApp):
                 def falcon_handler(inner_self, req, res, **kwargs):
                     try:
                         data = FalconApp._get_request_data(call, req, **kwargs)
-                        body = call.method(*data if data else None)
+                        body = call.method(**data)
                         FalconApp._update_response(call, res, body)
 
                     except Exception as e:  # TODO be more precise, exception translations #23
@@ -125,30 +125,35 @@ class FalconApp(FrameworkApp):
     @staticmethod
     def _get_request_data(call, req, **kwargs):
         has_meta_model = hasattr(call.interface, 'meta_model')
-        ret = []
+        ret = {}
         if kwargs:
             # The only kwargs supported are the auto-generated for single
             # resource operation, kwargs represent id
             if not has_meta_model:
                 raise Exception  # TODO
             if hasattr(call.interface.meta_model, 'primary_key_field'):
-                ret.append(call.interface.meta_model.validate_id(**kwargs))
+                ret['res_id'] = call.interface.meta_model.validate_id(**kwargs)
 
         if call.encoder and call.http_method in ("put", "post"):
             # Expects some data
             data = req.stream.read()
-            if has_meta_model:
+            if data and has_meta_model:
                 # Data has a specific shape
-                ret.append(call.encoder.decode(
+                ret['resource'] = (call.encoder.decode(
                     data, call.interface.meta_model))
             elif data:
                 # Data hasn't a specific shape
-                ret.append(call.encoder.decode_shapeless(data))
+                d = call.encoder.decode_unshaped(data)
+                if isinstance(d, dict):
+                    ret.update(d)
+                else:
+                    # Only dict as non shaped is supported
+                    raise NotImplementedError()
         elif call.http_method == "get" and req.params:
             # Data, if present, is placed on request param
-            ret.append(req.params)
+            ret.update(req.params)
 
-        return ret if ret else None
+        return ret
 
     @staticmethod
     def _update_response(call, res, body):
