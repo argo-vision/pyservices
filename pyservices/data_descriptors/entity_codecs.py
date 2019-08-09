@@ -160,6 +160,7 @@ class Codec(abc.ABC):
         pass
 
 
+
 class JSON(Codec):
     """A codec for the JSON format.
     """

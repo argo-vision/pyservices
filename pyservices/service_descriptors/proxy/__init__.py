@@ -34,7 +34,7 @@ def create_service_connector(service, service_location):
         else:
             raise NotImplementedError
 
-        iface_name = iface._get_endpoint_name()
+        iface_name = iface._get_interface_path()
         if iface_name in interfaces_endpoints:
             interfaces_endpoints[iface_name.replace('-', '_')]._merge_endpoints(endpoint)
         else:

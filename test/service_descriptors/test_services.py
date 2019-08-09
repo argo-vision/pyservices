@@ -36,13 +36,6 @@ class TestRestServer(unittest.TestCase):
         self.httpd.shutdown()
         self.httpd.server_close()
 
-    def testHTTPGetHTTPOperations(self):
-        test_interface = TestRPCInterface(None)
-        methods = test_interface._get_http_operations()
-        self.assertIsInstance(methods, list)
-        for x in methods:
-            self.assertIsInstance(x, InterfaceOperationDescriptor)
-
     def testHTTPGetResource(self):
         resp = requests.get(base_path + '/account-interface/1')
         self.assertEqual(resp.status_code, 200)
