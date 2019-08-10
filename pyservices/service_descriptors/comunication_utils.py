@@ -21,8 +21,8 @@ class HTTPResponse(NamedTuple):
 
 def get_updated_response(call: InterfaceOperationDescriptor, body: str) -> HTTPResponse:
     r = HTTPResponse()
-    if body:
-        r = HTTPResponse(None, call.decoder.encode(body))
+    if body is not None:
+        r = HTTPResponse(None, call.encoder.encode(body))
     return r
 
 
@@ -37,16 +37,16 @@ def get_data_from_request(call: InterfaceOperationDescriptor, req: HTTPRequest, 
         if hasattr(call.interface.meta_model, 'primary_key_field'):
             ret['res_id'] = call.interface.meta_model.validate_id(**kwargs)
 
-    if call.encoder and call.http_method in ("put", "post"):
+    if call.decoder and call.http_method in ("put", "post"):
         # Expects some data
         data = req.body
         if data and has_meta_model:
             # Data has a specific shape
-            ret['resource'] = (call.encoder.decode(
+            ret['resource'] = (call.decoder.decode(
                 data, call.interface.meta_model))
         elif data:
             # Data hasn't a specific shape
-            d = call.encoder.decode_unshaped(data)
+            d = call.decoder.decode_unshaped(data)
             if isinstance(d, dict):
                 ret.update(d)
             else:

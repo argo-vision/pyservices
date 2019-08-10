@@ -9,6 +9,8 @@ from pyservices import JSON
 from pyservices.service_descriptors.proxy.proxy_interface import EndPoint
 from pyservices.utilities.exceptions import ClientException
 
+# TODO refactor
+
 
 def _check_instances(resource, resource_class):
     if isinstance(resource, list):
@@ -54,7 +56,7 @@ class RestEndPoint(EndPoint):
 class RemoteRestRequestCall(RestEndPoint):
     def __init__(self, iface_location, meta_model):
         self.iface_location = iface_location
-        self.model = meta_model
+        self.meta_model = meta_model
 
     def path(self, path):
         if path is None:
@@ -63,15 +65,16 @@ class RemoteRestRequestCall(RestEndPoint):
             return "{}/{}".format(self.iface_location, path)
 
     def add(self, data):
-        if not _check_instances(data, self.model.get_class()):
-            raise ValueError('Expected a {}'.format(self.model.name))
+        if not _check_instances(data, self.meta_model.get_class()):
+            raise ValueError('Expected a {}'.format(self.meta_model.name))
         try:
             resp = requests.put(self.path(None), data=JSON.encode(data), timeout=5)
         except Exception:
             raise ClientException('Exception on request')
 
         _check_message_status(resp)
-        return resp.headers['location'].split('/')[-1]
+        pk_name = self.meta_model.primary_key_field.name
+        return getattr(data, pk_name)
 
     def delete(self, res_id):
         if isinstance(res_id, dict):
@@ -105,7 +108,7 @@ class RemoteRestRequestCall(RestEndPoint):
             raise ClientException('Exception on request')
 
         _check_message_status(resp)
-        return JSON.decode(resp.content, self.model)
+        return JSON.decode(resp.content, self.meta_model)
 
     def detail(self, res_id):
         if isinstance(res_id, dict):
@@ -116,7 +119,7 @@ class RemoteRestRequestCall(RestEndPoint):
             raise ClientException('Exception on request')
 
         _check_message_status(resp)
-        return JSON.decode(resp.content, self.model)
+        return JSON.decode(resp.content, self.meta_model)
 
 
 # FIXME: maybe not all this functions are implemented

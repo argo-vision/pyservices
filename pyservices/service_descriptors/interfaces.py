@@ -213,11 +213,19 @@ class RestResourceInterface(HTTPInterface):
     @staticmethod
     def _get_merged_collect(collects):
         def merged_collect(*args, **kwargs):
+            actual = None
             for c in collects:
                 try:
-                    return c(*args, **kwargs)
+                    sg = inspect.signature(c)
+                    sg.bind(**kwargs)
+                    actual = c
+                    break
                 except TypeError:
                     continue
+            if actual:
+                return actual(**kwargs)
+            else:
+                raise TypeError
         return merged_collect
 
     @staticmethod
