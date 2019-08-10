@@ -188,7 +188,7 @@ class RestResourceInterface(HTTPInterface):
             collect = RestResourceInterface._get_merged_collect(collects)
             methods['collect'] = collect
 
-        id_path = self._get_meta_model_id_placeholder_path()
+        id_path = RestResourceInterface._get_meta_model_id_placeholder_path(self.meta_model)
         info = [
             ('collect', 'get'),
             ('detail', 'get', id_path),
@@ -220,10 +220,11 @@ class RestResourceInterface(HTTPInterface):
                     continue
         return merged_collect
 
-    def _get_meta_model_id_placeholder_path(self):
-        if isinstance(self.meta_model.primary_key_field, ComposedField):
+    @staticmethod
+    def _get_meta_model_id_placeholder_path(meta_model):
+        if isinstance(meta_model.primary_key_field, ComposedField):
             id_dimension = len(
-                self.meta_model.primary_key_field.meta_model.fields)
+                meta_model.primary_key_field.meta_model.fields)
         else:
             id_dimension = 1
         return '/'.join(['{{id_field_{}}}'.format(i) for i in range(id_dimension)])

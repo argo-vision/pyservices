@@ -1,22 +1,16 @@
 import abc
-import collections
-import inspect
 import itertools
-import json
-import logging
 from functools import wraps
-from json.decoder import JSONDecodeError
 from collections import defaultdict
 
 import falcon
 
 import pyservices as ps
 from pyservices.context import Context
-from pyservices.data_descriptors import entity_codecs
-from pyservices.data_descriptors.fields import ComposedField
+from pyservices.service_descriptors.comunication_utils import HTTPRequest, HTTPResponse, \
+    get_data_from_request, get_updated_response
 from pyservices.service_descriptors.interfaces import RestResourceInterface, \
     RPCInterface, HTTPInterface, InterfaceOperationDescriptor
-from pyservices.utilities.exceptions import HTTPNotFound
 
 COMPONENT_DEPENDENCIES = []
 COMPONENT_KEY = __name__
@@ -29,7 +23,7 @@ FALCON = 'falcon'
 # FIXME document, rename as App in Wrapper?
 # FIXME Falcon generators can be generalized -> interfaces must provide COMMON CLASS FOR CALLSname
 
-class FrameworkApp(abc.ABC):
+class WSGIAppWrapper(abc.ABC):
     """ Base class for frameworks, it is used to crete WSGI applications.
     """
 
@@ -48,7 +42,7 @@ class FrameworkApp(abc.ABC):
                 if issubclass(iface_desc.__class__, HTTPInterface)]
 
 
-class FalconApp(FrameworkApp):
+class FalconWrapper(WSGIAppWrapper):
 
     def __init__(self):
         super().__init__()
@@ -78,7 +72,7 @@ class FalconApp(FrameworkApp):
 
     def _update_falcon_resource(self, service):
         # Update resources for every interface of the service
-        for iface in FrameworkApp._get_interfaces(service):
+        for iface in WSGIAppWrapper._get_interfaces(service):
             self._update_resources(iface)
 
     def _update_resources(self, iface: HTTPInterface):
@@ -98,7 +92,7 @@ class FalconApp(FrameworkApp):
         # Update/create single resource for given path
         resource_class_name = f'FalconResource@{path}'
         falcon_resource_dict = {f'on_{op.http_method}':
-                                FalconApp.http_operation_wrapper(op)
+                                FalconWrapper.http_operation_wrapper(op)
                                 for op in operations}
         resource = self._resources.get(path)
         if resource:
@@ -113,54 +107,17 @@ class FalconApp(FrameworkApp):
                 @wraps(call)
                 def falcon_handler(inner_self, req, res, **kwargs):
                     try:
-                        data = FalconApp._get_request_data(call, req, **kwargs)
+                        data = get_data_from_request(call, HTTPRequest(req.stream.read(), req.params), **kwargs)
                         body = call.method(**data)
-                        FalconApp._update_response(call, res, body)
+                        updated_res: HTTPResponse = get_updated_response(call, body)
+                        res.body = updated_res.body
 
                     except Exception as e:  # TODO be more precise, exception translations #23
                         res.status = falcon.HTTP_500
 
                 return falcon_handler
 
-    @staticmethod
-    def _get_request_data(call, req, **kwargs):
-        has_meta_model = hasattr(call.interface, 'meta_model')
-        ret = {}
-        if kwargs:
-            # The only kwargs supported are the auto-generated for single
-            # resource operation, kwargs represent id
-            if not has_meta_model:
-                raise Exception  # TODO
-            if hasattr(call.interface.meta_model, 'primary_key_field'):
-                ret['res_id'] = call.interface.meta_model.validate_id(**kwargs)
-
-        if call.encoder and call.http_method in ("put", "post"):
-            # Expects some data
-            data = req.stream.read()
-            if data and has_meta_model:
-                # Data has a specific shape
-                ret['resource'] = (call.encoder.decode(
-                    data, call.interface.meta_model))
-            elif data:
-                # Data hasn't a specific shape
-                d = call.encoder.decode_unshaped(data)
-                if isinstance(d, dict):
-                    ret.update(d)
-                else:
-                    # Only dict as non shaped is supported
-                    raise NotImplementedError()
-        elif call.http_method == "get" and req.params:
-            # Data, if present, is placed on request param
-            ret.update(req.params)
-
-        return ret
-
-    @staticmethod
-    def _update_response(call, res, body):
-        if body:
-            res.body = call.decoder.encode(body)
-
 
 def register_component(ctx: Context):
-    app = FalconApp()  # TODO falcon is the only WSGI app supported
+    app = FalconWrapper()  # TODO falcon is the only WSGI app supported
     ctx.register_app(app)  # TODO think about register_app (get_app)

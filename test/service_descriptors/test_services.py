@@ -6,7 +6,7 @@ from wsgiref import simple_server
 
 import requests
 
-from pyservices.service_descriptors.frameworks import FalconApp
+from pyservices.service_descriptors.frameworks import FalconWrapper
 from pyservices.service_descriptors.interfaces import InterfaceOperationDescriptor
 from pyservices.service_descriptors.proxy import create_service_connector
 from test.data_descriptors.meta_models import *
@@ -23,7 +23,7 @@ class TestRestServer(unittest.TestCase):
     def setUp(self):
         service = AccountManager()
 
-        app_wrapper = FalconApp()  # TODO the only WSGI framework implemented
+        app_wrapper = FalconWrapper()  # TODO the only WSGI framework implemented
         app_wrapper.register_route(service)
         self.httpd = simple_server.make_server(address, port, app_wrapper.app)
         t = Thread(target=self.httpd.serve_forever)

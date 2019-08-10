@@ -4,7 +4,7 @@ from pyservices.context.dependencies import create_application
 from pyservices.context.dependencies import microservice_sorted_dependencies, \
     components_graph, topological_sort, is_acyclic
 from pyservices.context.microservice_utils import MicroServiceConfiguration
-from pyservices.service_descriptors.frameworks import FrameworkApp
+from pyservices.service_descriptors.frameworks import WSGIAppWrapper
 from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
 from test.context.configuration import configurations
@@ -93,7 +93,7 @@ class TestContext(unittest.TestCase):
     def testCreateApplication(self):
         conf = MicroServiceConfiguration(configurations, 'micro-service1')
         app = create_application(conf)
-        self.assertTrue(isinstance(app, FrameworkApp))
+        self.assertTrue(isinstance(app, WSGIAppWrapper))
         conf = MicroServiceConfiguration(configurations, 'micro-service2')
         app = create_application(conf)
-        self.assertTrue(isinstance(app, FrameworkApp))
+        self.assertTrue(isinstance(app, WSGIAppWrapper))

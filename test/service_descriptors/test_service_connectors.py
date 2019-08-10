@@ -2,7 +2,7 @@ import unittest
 from threading import Thread
 from wsgiref import simple_server
 
-from pyservices.service_descriptors.frameworks import FalconApp
+from pyservices.service_descriptors.frameworks import FalconWrapper
 from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utilities.exceptions import ClientException
 from test.data_descriptors.meta_models import *
@@ -41,7 +41,7 @@ class ServiceConnectorTest(unittest.TestCase):
     def setUp(self):
         service = AccountManager()
 
-        app_wrapper = FalconApp()  # TODO the only WSGI framework implemented
+        app_wrapper = FalconWrapper()  # TODO the only WSGI framework implemented
         app_wrapper.register_route(service)
         self.httpd = simple_server.make_server(address, port, app_wrapper.app)
         t = Thread(target=self.httpd.serve_forever)
@@ -63,7 +63,7 @@ class ServiceConnectorTest(unittest.TestCase):
 
     def testServiceConnectorRemote(self):
         service = Service1()
-        app_wrapper = FalconApp()
+        app_wrapper = FalconWrapper()
         app_wrapper.register_route(service)
         httpd = simple_server.make_server(address, port, app_wrapper.app)
         t = Thread(target=httpd.serve_forever)
