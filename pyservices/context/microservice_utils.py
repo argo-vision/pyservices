@@ -31,7 +31,7 @@ class MicroServiceConfiguration:
         return list(self.conf.keys())
 
     @staticmethod
-    def _current_microservice_name() -> str:
+    def _current_micrFoservice_name() -> str:
         """
             service name from os variable GAE_SERVICE
         """

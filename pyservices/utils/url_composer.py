@@ -1,7 +1,5 @@
 # from pyservices.utils.gcloud.exceptions import GcloudEnvironmentException
 from pyservices.utils.gcloud import get_project_id, check_if_gcloud
-from pyservices.context.dependencies import get_service_class
-from pyservices.context.microservice_utils import MicroServiceConfiguration
 
 COMPONENT_KEY = __name__
 COMPONENT_DEPENDENCIES = []
@@ -13,7 +11,7 @@ class DefaultUrlComposer:
     Class url composer
     """
 
-    def __init__(self, micro_service_configuration: MicroServiceConfiguration):
+    def __init__(self, micro_service_configuration):
         self._ms_config = micro_service_configuration
 
     def get_https_url(self, service):
@@ -38,6 +36,7 @@ class GCloudUrlComposer(DefaultUrlComposer):
 
     @classmethod
     def _get_host(cls, service):
+        from pyservices.context.dependencies import get_service_class
         # TODO Assume that service_name is service_base_path?
         service_name = get_service_class(service).service_base_path
         project_id = get_project_id()  # TODO what if
