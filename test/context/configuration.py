@@ -6,13 +6,13 @@ def get_path(comp_name):
 configurations = {
     'micro-service1': {
         'services': [get_path('service1'), get_path('service2')],
-        'address' : 'localhost',
-        'port': '12345'
+        'address': 'localhost',
+        'port': '1234'
     },
     'micro-service2': {
         'services': [get_path('service3')],
         'address': 'localhost',
-        'port': '12346'
+        'port': '7890'
     },
     'micro-service-broken': {
         'services': [get_path('service_broken')],

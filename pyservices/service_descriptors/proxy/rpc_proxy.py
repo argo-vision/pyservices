@@ -3,7 +3,7 @@ import json
 import requests
 
 from pyservices.service_descriptors.proxy.proxy_interface import EndPoint
-from pyservices.utilities.exceptions import ClientException
+from pyservices.utils.exceptions import ClientException
 
 
 class RemoteRPCRequestCall:

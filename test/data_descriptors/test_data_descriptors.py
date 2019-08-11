@@ -1,6 +1,6 @@
 import unittest
 from pyservices.data_descriptors.fields import *
-from pyservices.utilities.exceptions import ModelInitException, MetaTypeException
+from pyservices.utils.exceptions import ModelInitException, MetaTypeException
 from test.data_descriptors.meta_models import *
 
 

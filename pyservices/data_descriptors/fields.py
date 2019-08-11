@@ -3,7 +3,7 @@ import datetime
 import uuid
 from typing import Callable, TypeVar, Union, Mapping
 
-from pyservices.utilities.exceptions import ModelInitException, MetaTypeException
+from pyservices.utils.exceptions import ModelInitException, MetaTypeException
 from pyservices.data_descriptors.meta_model import MetaModel
 
 

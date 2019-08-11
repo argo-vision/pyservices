@@ -5,7 +5,7 @@ from pyservices.context.dependencies import microservice_sorted_dependencies, \
     components_graph, topological_sort, is_acyclic
 from pyservices.context.microservice_utils import MicroServiceConfiguration
 from pyservices.service_descriptors.frameworks import WSGIAppWrapper
-from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
+from pyservices.utils.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
 from test.context.configuration import configurations
 

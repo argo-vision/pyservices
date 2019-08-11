@@ -33,7 +33,7 @@ def register_component(ctx: Context):
 Gianluca Scarpellini - gianluca.scarpellini@argo.vision
 """
 from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.utilities.exceptions import ComponentNotFound
+from pyservices.utils.exceptions import ComponentNotFound
 from pyservices.service_descriptors.layer_supertypes import Service
 
 
@@ -81,3 +81,4 @@ class Context:
     def startup(self):
         for function in self._startup_functions:
             function(self)
+

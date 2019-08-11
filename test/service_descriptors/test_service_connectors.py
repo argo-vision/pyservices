@@ -4,7 +4,7 @@ from wsgiref import simple_server
 
 from pyservices.service_descriptors.frameworks import FalconWrapper
 from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.utilities.exceptions import ClientException
+from pyservices.utils.exceptions import ClientException
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.components.service1 import Service1, note_mm
 from test.service_descriptors.components.service2 import Service2

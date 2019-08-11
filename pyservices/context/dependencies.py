@@ -6,7 +6,7 @@ import inspect
 from pyservices.context import Context
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
+from pyservices.utils.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
 
 
@@ -124,7 +124,7 @@ def create_application(conf):
         m = importlib.import_module(dep)
         service = get_service_class(m)
         if service is not None and dep not in conf.services():
-            remote_service = create_service_connector(service,conf.address_of(dep))
+            remote_service = create_service_connector(service, conf.host_of(dep))
             ctx.register(m.COMPONENT_KEY,remote_service)
         else:
             m.register_component(ctx)
@@ -134,7 +134,7 @@ def create_application(conf):
 
 
 def _inject_dependencies(services, conf):
-    remotes = {m: conf.address_of(s.__module__) if m not in conf.services() else 'local'
+    remotes = {m: conf.host_of(s.__module__) if m not in conf.services() else 'local'
                for m, s in services.items()}
 
     for module, service in services.items():
