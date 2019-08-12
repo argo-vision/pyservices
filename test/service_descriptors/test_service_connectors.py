@@ -2,7 +2,7 @@ import unittest
 from threading import Thread
 from wsgiref import simple_server
 
-from pyservices.service_descriptors.frameworks import FalconWrapper
+from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
 from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utils.exceptions import ClientException
 from test.data_descriptors.meta_models import *
@@ -10,7 +10,7 @@ from test.service_descriptors.components.service1 import Service1, note_mm
 from test.service_descriptors.components.service2 import Service2
 from test.service_descriptors.components.service3 import Service3
 from test.service_descriptors.service import AccountManager
-
+from test.service_descriptors.components.configuration import configurations
 address = '0.0.0.0'
 port = 8080
 account_manager_port = 8000
@@ -20,21 +20,6 @@ base_path_service2 = f'http://{address}:{port}/{Service2.service_base_path}'
 base_path_service3 = f'http://{address}:{port_remote}/{Service3.service_base_path}'
 
 account_manager_base_path = f'http://{address}:{account_manager_port}/{AccountManager.service_base_path}'
-
-
-def get_path(comp_name):
-    path = 'test.service_descriptors.components'
-    return f'{path}.{comp_name}'
-
-
-configurations = {
-    'micro-service1': {
-        'services': [get_path('service1'), get_path('service2')]
-    },
-    'micro-service2': {
-        'services': [get_path('service3')]
-    }
-}
 
 
 class ServiceConnectorTest(unittest.TestCase):

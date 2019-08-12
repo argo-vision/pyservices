@@ -1,7 +1,10 @@
 import os
 from typing import List
 
-from pyservices.context.dependencies import microservice_sorted_dependencies
+from pyservices.context import Context
+from pyservices.context.dependencies import microservice_sorted_dependencies, \
+    components_graph
+from pyservices.service_descriptors.layer_supertypes import Service
 
 
 class MicroServiceConfiguration:
@@ -57,3 +60,10 @@ class MicroServiceConfiguration:
 
     def microservice_configuration(self, micro_name: str):
         return MicroServiceConfiguration(self.conf, micro_name)
+
+    def get(self, service):
+        """
+        Returns:
+           list of services which ha     
+        """
+

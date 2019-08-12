@@ -4,10 +4,10 @@ from pyservices.context.dependencies import create_application
 from pyservices.context.dependencies import microservice_sorted_dependencies, \
     components_graph, topological_sort, is_acyclic
 from pyservices.context.microservice_utils import MicroServiceConfiguration
-from pyservices.service_descriptors.frameworks import WSGIAppWrapper
+from pyservices.service_descriptors.WSGIAppWrapper import WSGIAppWrapper
 from pyservices.utils.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
-from test.context.configuration import configurations
+from test.context.components.configuration import configurations
 
 
 class TestContext(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestContext(unittest.TestCase):
                           configurations['micro-service-broken']['services'])
 
     def testTopologicalSort(self):
-        ts = ['pyservices.service_descriptors.frameworks',
+        ts = ['pyservices.service_descriptors.WSGIAppWrapper',
               'test.context.components.service3',
               'test.context.components.component2',
               'test.context.components.component1',
@@ -35,24 +35,24 @@ class TestContext(unittest.TestCase):
               'test.context.components.service1']
         graph = {
             'test.context.components.service1': [
-                'pyservices.service_descriptors.frameworks',
+                'pyservices.service_descriptors.WSGIAppWrapper',
                 'test.context.components.component1'],
             'test.context.components.component1': [
                 'test.context.components.component2'],
             'test.context.components.component2': [
                 'test.context.components.service3'],
             'test.context.components.service3': [
-                'pyservices.service_descriptors.frameworks'],
-            'pyservices.service_descriptors.frameworks': [],
+                'pyservices.service_descriptors.WSGIAppWrapper'],
+            'pyservices.service_descriptors.WSGIAppWrapper': [],
             'test.context.components.service2': [
-                'pyservices.service_descriptors.frameworks',
+                'pyservices.service_descriptors.WSGIAppWrapper',
                 'test.context.components.component1']}
         self.assertListEqual(topological_sort(graph), ts)
 
     def testMicroServiceDependencies(self):
         deps = microservice_sorted_dependencies(
             configurations['micro-service1']['services'])
-        expected = ['pyservices.service_descriptors.frameworks',
+        expected = ['pyservices.service_descriptors.WSGIAppWrapper',
                     'test.context.components.service3',
                     'test.context.components.component2',
                     'test.context.components.component1',

@@ -1,3 +1,6 @@
+import importlib
+import os
+
 import abc
 import itertools
 from functools import wraps
@@ -7,10 +10,11 @@ import falcon
 
 import pyservices as ps
 from pyservices.context import Context
-from pyservices.service_descriptors.comunication_utils import HTTPRequest, HTTPResponse, \
-    get_data_from_request, get_updated_response
-from pyservices.service_descriptors.interfaces import RestResourceInterface, \
-    RPCInterface, HTTPInterface, InterfaceOperationDescriptor
+from pyservices.context.microservice_utils import MicroServiceConfiguration
+from pyservices.service_descriptors.comunication_utils import HTTPRequest, \
+    HTTPResponse, get_data_from_request, get_updated_response
+from pyservices.service_descriptors.interfaces import HTTPInterface,\
+    InterfaceOperationDescriptor
 
 COMPONENT_DEPENDENCIES = []
 COMPONENT_KEY = __name__
@@ -40,6 +44,24 @@ class WSGIAppWrapper(abc.ABC):
         return [iface_desc
                 for iface_desc in service.interface_descriptors
                 if issubclass(iface_desc.__class__, HTTPInterface)]
+
+    @staticmethod
+    def get_exposed_operations(iface):
+        return [x
+                for x in iface._get_http_operations()
+                if WSGIAppWrapper.must_expose(x)]
+
+    @staticmethod
+    def must_expose(op):
+        # TODO #38
+        env = os.getenv('ENVIRONMENT')
+        if env == 'DEVELOP':
+            return True
+        current_ms = os.getenv('MICROSERVICE')
+        config = importlib.import_module(f'uservices.{current_ms}.py').config
+        config = MicroServiceConfiguration(config, current_ms)
+
+        return config.
 
 
 class FalconWrapper(WSGIAppWrapper):
@@ -80,7 +102,7 @@ class FalconWrapper(WSGIAppWrapper):
         operations = defaultdict(list)
 
         # Aggregate calls by paths
-        for op in iface._get_http_operations():
+        for op in self.get_exposed_operations():
             ps.log.error("Creating {} - {}".format(op.path, op.http_method))
             operations[op.path].append(op)
 

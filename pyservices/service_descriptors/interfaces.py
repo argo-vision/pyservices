@@ -69,7 +69,7 @@ class HTTPInterface(InterfaceBase):
         return f'/{self.service.service_base_path}/{self._get_interface_path()}'
 
 
-class HttpExposition(Enum):
+class HTTPExposition(Enum):
     """
     Exposition choices for an operation.
     NOTE: Expose all operations in development (also the forbidden ones).
@@ -89,7 +89,7 @@ class InterfaceOperationDescriptor(NamedTuple):
     path: str = ""
     encoder: Codec = JSON
     decoder: Codec = JSON
-    exposition: HttpExposition = HttpExposition.ON_DEPENDENCY
+    exposition: HTTPExposition = HTTPExposition.ON_DEPENDENCY
 
 
 class RestResourceInterface(HTTPInterface):
@@ -253,7 +253,8 @@ class RPCInterface(HTTPInterface):
     def _get_http_operations(self):
         methods = self._get_instance_calls().values()
         return [InterfaceOperationDescriptor(self, m, m.http_method,
-                                             f'{self._get_endpoint()}/{m.path}')
+                                             f'{self._get_endpoint()}/{m.path}',
+                                             exposition=m.exposition)
                 for m in methods]
 
     @classmethod
@@ -262,7 +263,8 @@ class RPCInterface(HTTPInterface):
         return {n: RPC()(c) for n, c in super()._get_class_calls().items()}
 
 
-def RPC(path=None, method="post"):
+def RPC(path=None, method="post",
+        exposition: HTTPExposition = HTTPExposition.ON_DEPENDENCY):
     """
     Decorator remote procedure calls (idempotent)
      TODO
@@ -278,6 +280,7 @@ def RPC(path=None, method="post"):
 
         wrapped_rpc_call.http_method = method.lower()
         wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
+        wrapped_rpc_call.exposition = exposition
         return wrapped_rpc_call
 
     return my_decorator

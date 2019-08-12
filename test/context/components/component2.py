@@ -1,5 +1,5 @@
 from pyservices.context import Context
-from ..configuration import get_path
+from test.context.components.configuration import get_path
 
 COMPONENT_DEPENDENCIES = [get_path('service3')]
 COMPONENT_KEY = __name__

@@ -1,8 +1,7 @@
 from pyservices.context import Context
 from pyservices.service_descriptors.layer_supertypes import Service
-from test.context.configuration import get_path
 
-COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.frameworks']
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper']
 COMPONENT_KEY = __name__
 
 

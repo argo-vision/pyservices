@@ -2,7 +2,7 @@ import unittest
 
 from pyservices.context.microservice_utils import MicroServiceConfiguration
 from pyservices.utils.url_composer import DefaultUrlComposer
-from test.context.configuration import configurations, get_path
+from test.context.components.configuration import configurations, get_path
 
 
 class TestUrlComposer(unittest.TestCase):

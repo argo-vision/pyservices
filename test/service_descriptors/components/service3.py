@@ -2,7 +2,7 @@ from pyservices.context import Context
 from pyservices.service_descriptors.interfaces import RPCInterface
 from pyservices.service_descriptors.layer_supertypes import Service
 
-COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.frameworks',
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper',
                           'test.service_descriptors.components.service1']
 COMPONENT_KEY = __name__
 

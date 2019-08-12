@@ -1,4 +1,5 @@
 import json
+import os
 import unittest
 from threading import Thread
 from urllib.parse import urlencode
@@ -6,11 +7,12 @@ from wsgiref import simple_server
 
 import requests
 
-from pyservices.service_descriptors.frameworks import FalconWrapper
+from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
 from pyservices.service_descriptors.interfaces import InterfaceOperationDescriptor
 from pyservices.service_descriptors.proxy import create_service_connector
 from test.data_descriptors.meta_models import *
-from test.service_descriptors.components.raw_interfaces import TestRPCInterface
+from test.service_descriptors.components.service_exposition1 import ServiceEx1
+from test.service_descriptors.components.service_exposition3 import ServiceEx3
 from test.service_descriptors.service import AccountManager
 
 address = '0.0.0.0'
@@ -111,6 +113,77 @@ class TestRestServer(unittest.TestCase):
         resp = requests.post(base_path + '/notes-op/empty')
         self.assertEqual(resp.status_code, 404)
 
+
+class TestRestServerExposition(unittest.TestCase):
+
+    def setUp(self):
+        self.address = '0.0.0.0'
+        self.port1 = 8080
+        self.port3 = 8081
+        self.base_path1 = f'http://{address}:{self.port1}/{ServiceEx1.service_base_path}'
+        self.base_path3 = f'http://{address}:{self.port3}/{ServiceEx3.service_base_path}'
+        self.service1 = ServiceEx1()
+        self.service3 = ServiceEx3()
+
+        self.app_wrapper1 = FalconWrapper()  # TODO the only WSGI framework implemented
+        self.app_wrapper3 = FalconWrapper()  # TODO the only WSGI framework implemented
+
+    def tearDown(self):
+        self.httpd1.shutdown()
+        self.httpd1.server_close()
+        self.httpd3.shutdown()
+        self.httpd3.server_close()
+
+    def testSelectiveExpositionDevelopment(self):
+        self._put_env_and_start_server('DEVELOPMENT')
+        self.assertTrue(requests.post(f'{self.base_path1}/expo/my-dep-op').json())
+        self.assertTrue(requests.post(f'{self.base_path1}/expo/my-forbidden-op').json())
+        self.assertTrue(requests.post(f'{self.base_path3}/expo/my-op').json())
+        self.assertTrue(requests.post(f'{self.base_path3}/expo/my-mandatory-op').json())
+
+    def testSelectiveExpositionProductionForbidden(self):
+        self._put_env_and_start_server('PRODUCTION')
+        self.assertEqual(
+            requests.post(
+                f'{self.base_path1}/expo/my-forbidden-op').status_code,
+            404)
+
+    def testSelectiveExpositionProductionMandatory(self):
+        self._put_env_and_start_server('PRODUCTION')
+        self.assertEqual(
+            requests.post(
+                f'{self.base_path3}/expo/my-mandatory-op').status_code,
+            200)
+
+    def testSelectiveExpositionProductionOnDependencyPresent(self):
+        self._put_env_and_start_server('PRODUCTION')
+        self.assertEqual(
+            requests.post(
+                f'{self.base_path3}/expo/my-op').status_code,
+            404)
+
+    def testSelectiveExpositionProductionOnDependencyNotPresent(self):
+        self._put_env_and_start_server('PRODUCTION')
+        self.assertEqual(
+            requests.post(
+                f'{self.base_path1}/expo/my-dep-op').status_code,
+            200)
+
+    def _put_env_and_start_server(self, env):
+        os.environ.putenv('environment', env)
+
+        self.app_wrapper1.register_route(self.service1)
+        self.app_wrapper3.register_route(self.service3)
+        self.httpd1 = simple_server.make_server(self.address,
+                                                self.port1,
+                                               self.app_wrapper1.app)
+        self.httpd3 = simple_server.make_server(self.address,
+                                                self.port3,
+                                                self.app_wrapper3.app)
+        t = Thread(target=self.httpd1.serve_forever)
+        t.start()
+        t = Thread(target=self.httpd3.serve_forever)
+        t.start()
 
 if __name__ == '__main__':
     unittest.main()
