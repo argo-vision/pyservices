@@ -1,0 +1,2 @@
+class GcloudEnvironmentException(Exception):
+    pass

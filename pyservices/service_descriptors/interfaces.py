@@ -1,8 +1,9 @@
 import abc
-from functools import wraps
 import inspect
+from functools import wraps
 
 from pyservices import JSON
+from pyservices.utilities.queues import get_queue
 
 
 class InterfaceBase(abc.ABC):
@@ -152,6 +153,7 @@ def RPC(path=None, method="POST"):
     Decorator remote procedure calls (idempotent)
      TODO
     """
+
     def RCP_call_decorator(func):
         if hasattr(func, 'path'):
             return func
@@ -165,3 +167,40 @@ def RPC(path=None, method="POST"):
         return wrapped_rpc_call
 
     return RCP_call_decorator
+
+
+class EventInterface(HTTPInterface):
+    """RPC interface used to perform remote procedure calls.
+    """
+    queue = None
+
+    def __init__(self, service):
+        super().__init__(service)
+        if self.queue is None:
+            self.queue = get_queue()
+
+    def get_http_operations(self):
+        """ TODO Actual remote procedure calls (with self etc..) """
+        return {n: Event()(c) for n, c in super().get_call_descriptors().items()}
+
+
+# TODO this decorator could be generalized for every HTTP call
+def Event(path=None, method="POST"):
+    """
+    Decorator event (idempotent)
+     TODO: more securiity?
+    """
+
+    def my_decorator(func):
+        if hasattr(func, 'path'):
+            return func
+
+        @wraps(func)
+        def wrapped_rpc_call(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        wrapped_rpc_call.method = method.lower()
+        wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
+        return wrapped_rpc_call
+
+    return my_decorator

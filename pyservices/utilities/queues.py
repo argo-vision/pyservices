@@ -1,10 +1,12 @@
 import json
 import logging
+import urllib
 from multiprocessing import Pipe
 
 import requests
 from persistqueue import FIFOSQLiteQueue
 
+from pyservices.utilities import gcloud
 from pyservices.utilities.pullers import GcloudFakeQueuePuller
 
 logger = logging.getLogger(__package__)
@@ -106,13 +108,13 @@ class Queue:
 class GcloudTaskQueue:
     """Wrapper for gcloud task queue rest interface """
 
-    def __init__(self, project_id, location_id, queue):
+    def __init__(self, project_id, location_id, queue_id):
         """ Initialize the gcloud task queue
 
         Attributes:
             project_id (str): project id from gcloud console
             location_id (str): location of the appengine application
-            queue (str) : queue name. Queue must be created from gcloud sdk
+            queue_id (str) : queue name. Queue must be created from gcloud sdk
 
 
         Gcloud sdk CLI:
@@ -138,19 +140,20 @@ class GcloudTaskQueue:
 
         # Construct the fully qualified queue name.
         self.client = _GcloudFakeQueue()  # Fake queue for debug
-        self.parent = self.client.queue_path(project_id, location_id, queue)
+        self.parent = self.client.queue_path(project_id, location_id, queue_id)
 
-    def add_task(self, method, relative_url, parameters="", body=""):
+    def add_task(self, method, relative_url, data=None):
         """Create a task for GcloudTaskQueue
 
          Attributes:
                 method (str): A http method ("GET" | "POST" | "PUT")
                 relative_url (str): An url relative to the current gcloud project url
                     ([path] only of an url like service-dot-proejct.appspot.com/[path])
-                parameters (str): parameters to be appended to the url (for GET only)
-                body (str) : body of the task request (for POST and PUT only)
+                data (dict): parameters to be appended to the url (for GET only) or
+                    body of the task request (for POST and PUT only)
 
         """
+
         method = method.upper()
         # Construct the request body.
         task = {
@@ -161,8 +164,11 @@ class GcloudTaskQueue:
         }
 
         if method in ["POST", "PUT"]:
-            task['app_engine_http_request']['body'] = body
-        elif method == "GET":
+            if data is None:
+                data = {}
+            task['app_engine_http_request']['body'] = json.dumps(data, default=str)
+        elif method == "GET" and data is not None:
+            parameters = urllib.parse.urlencode(data)
             task['app_engine_http_request']['url'] = '{}?{}'.format(relative_url, parameters)
 
         # Use the client to build and send the task.
@@ -193,8 +199,8 @@ class _GcloudFakeQueue:
         self._puller.start()
         self._parent = []
 
-    def queue_path(self, project_id, location_id, queue):
-        self._parent = [project_id, location_id, queue]
+    def queue_path(self, project_id, location_id, queue_id):
+        self._parent = [project_id, location_id, queue_id]
         return self._parent
 
     def create_task(self, parent, task):
@@ -203,13 +209,12 @@ class _GcloudFakeQueue:
         app_engine_http_request = task['app_engine_http_request']
         url = app_engine_http_request['url']
         http_method = app_engine_http_request['http_method']
-        _schedule_time = task['schedule_time']
 
         if http_method == "POST":
-            kwargs = {'data': json.dumps(app_engine_http_request['body'], default=str)}
+            kwargs = {'data': app_engine_http_request['body']}
             call = requests.post
         elif http_method == "PUT":
-            kwargs = {'data': json.dumps(app_engine_http_request['body'], default=str)}
+            kwargs = {'data': app_engine_http_request['body']}
             call = requests.put
         elif http_method == "GET":
             call = requests.get
@@ -217,7 +222,15 @@ class _GcloudFakeQueue:
         else:
             raise NotImplementedError()
 
-        self._queue.put({'call': call, 'url': url, 'args': kwargs})
+        final_task = {'call': call, 'url': url, 'args': kwargs}
+        self._queue.put(final_task)
 
-        response = {'name': "Fake gcloud task"}
+        response = {'name': "Fake gcloud task", 'task': final_task}
         return response
+
+
+def get_queue():
+    project_id = gcloud.get_project_id()
+    location_id = gcloud.get_location_id()
+    service_id = gcloud.get_service_id()
+    return GcloudTaskQueue(project_id, location_id, service_id)
