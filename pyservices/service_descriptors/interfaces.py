@@ -1,10 +1,16 @@
 import abc
 import inspect
+import logging
+from enum import Enum
+from functools import wraps
+from typing import NamedTuple
 from functools import wraps
 
 from pyservices import JSON
+from pyservices.data_descriptors.entity_codecs import Codec
+from pyservices.data_descriptors.fields import ComposedField
+import pyservices as ps
 from pyservices.utilities.queues import get_queue
-
 
 class InterfaceBase(abc.ABC):
     """Base class of interfaces. InterfaceBase subclasses describe interfaces.
@@ -21,26 +27,69 @@ class InterfaceBase(abc.ABC):
     def __init__(self, service):
         self.service = service
 
-    def get_calls(self):
+    @staticmethod
+    def _get_calls(it, typecheck):
         return {method[0]: method[1] for method in inspect.getmembers(
-            self, lambda m: inspect.ismethod(m))
+            it, lambda m: typecheck(m))
                 if not method[0].startswith('_')}
 
+    def _get_instance_calls(self):
+        """Get name - function of an interface as dictionary
+
+        Returns:
+        """
+        return InterfaceBase._get_calls(self, inspect.ismethod)
+
     @classmethod
-    def get_call_descriptors(cls):
-        return {method[0]: method[1] for method in inspect.getmembers(
-            cls, lambda m: inspect.isfunction(m))
-                if not method[0].startswith('_')}
+    def _get_class_calls(cls):
+        return InterfaceBase._get_calls(cls, inspect.isfunction)
 
 
 class HTTPInterface(InterfaceBase):
     """Abstract HTTP interface.
 
     """
+    @abc.abstractmethod
+    def _get_http_operations(self):
+        """
+        Inspects type(self) and generates the list of operations that can be exposed by the framework-app.
+
+        Returns:
+            List of InterfaceOperationDescriptor objects.
+        """
+        pass
+
+
 
     @classmethod
-    def get_endpoint_name(cls):
+    def _get_interface_path(cls):
         return cls.if_path
+
+    def _get_endpoint(self):
+        return f'/{self.service.service_base_path}/{self._get_interface_path()}'
+
+
+class HttpExposition(Enum):
+    """
+    Exposition choices for an operation.
+    NOTE: Expose all operations in development (also the forbidden ones).
+    """
+    MANDATORY = 0
+    FORBIDDEN = 1
+    ON_DEPENDENCY = 2
+
+
+class InterfaceOperationDescriptor(NamedTuple):
+    """
+    Descriptor of a single remote HTTP operation.
+    """
+    interface: HTTPInterface
+    method: callable
+    http_method: str = "POST"
+    path: str = ""
+    encoder: Codec = JSON
+    decoder: Codec = JSON
+    exposition: HttpExposition = HttpExposition.ON_DEPENDENCY
 
 
 class RestResourceInterface(HTTPInterface):
@@ -120,11 +169,11 @@ class RestResourceInterface(HTTPInterface):
         pass
 
     @classmethod
-    def get_endpoint_name(cls):
+    def _get_interface_path(cls):
         return cls.if_path or f'{cls.meta_model.name.lower()}s'
 
-    def get_calls(self):
-        methods = super().get_calls()
+    def _get_instance_calls(self):
+        methods = super()._get_instance_calls()
         collect_methods_names = \
             filter(lambda k: k.startswith('collect'), methods)
         methods['collect'] = sorted(
@@ -132,29 +181,94 @@ class RestResourceInterface(HTTPInterface):
             key=lambda m: inspect.getsourcelines(m)[1])
         return methods
 
+    def _get_http_operations(self):
+        methods = self._get_instance_calls()
+        collects = methods.get('collect')
+        if collects:
+            collect = RestResourceInterface._get_merged_collect(collects)
+            methods['collect'] = collect
+
+        id_path = RestResourceInterface._get_meta_model_id_placeholder_path(self.meta_model)
+        info = [
+            ('collect', 'get'),
+            ('detail', 'get', id_path),
+            ('update', 'post', id_path),
+            ('add', 'put'),
+            ('delete', 'delete', id_path),
+        ]
+        return [self._interface_operation_descriptor(methods, *i) for i in info]
+
+    def _interface_operation_descriptor(self, methods, method_name,
+                                        http_method, path=None):
+        m = methods.get(method_name)
+        base_path = self._get_endpoint()
+        if path:
+            base_path = f'{base_path}/{path}'
+
+        codec = self.codec
+        if m:
+            return InterfaceOperationDescriptor(self, m, http_method, base_path,
+                                                codec, codec)
+
+    @staticmethod
+    def _get_merged_collect(collects):
+        def merged_collect(*args, **kwargs):
+            actual = None
+            for c in collects:
+                try:
+                    sg = inspect.signature(c)
+                    sg.bind(**kwargs)
+                    actual = c
+                    break
+                except TypeError:
+                    continue
+            if actual:
+                return actual(**kwargs)
+            else:
+                raise TypeError
+        return merged_collect
+
+    @staticmethod
+    def _get_meta_model_id_placeholder_path(meta_model):
+        if isinstance(meta_model.primary_key_field, ComposedField):
+            id_dimension = len(
+                meta_model.primary_key_field.meta_model.fields)
+        else:
+            id_dimension = 1
+        return '/'.join(['{{id_field_{}}}'.format(i) for i in range(id_dimension)])
+
 
 class RPCInterface(HTTPInterface):
     """RPC interface used to perform remote procedure calls.
     """
 
-    def get_calls(self):
-        """ TODO Actual remote procedure calls (with self etc..) """
-        return {n: RPC()(m) for n, m in super().get_calls().items()}
+    def _get_instance_calls(self):
+        """
+
+        Returns:
+            All public methods of rpc interface. Every method is tagged with RPC descriptor
+         TODO Actual remote procedure calls (with self etc..) """
+        return {n: RPC()(m) for n, m in super()._get_instance_calls().items()}
+
+    def _get_http_operations(self):
+        methods = self._get_instance_calls().values()
+        return [InterfaceOperationDescriptor(self, m, m.http_method,
+                                             f'{self._get_endpoint()}/{m.path}')
+                for m in methods]
 
     @classmethod
-    def get_call_descriptors(cls):
+    def _get_class_calls(cls):
         """ TODO Actual remote procedure calls (with self etc..) """
-        return {n: RPC()(c) for n, c in super().get_call_descriptors().items()}
+        return {n: RPC()(c) for n, c in super()._get_class_calls().items()}
 
 
-# TODO this decorator could be generalized for every HTTP call
-def RPC(path=None, method="POST"):
+def RPC(path=None, method="post"):
     """
     Decorator remote procedure calls (idempotent)
      TODO
     """
 
-    def RCP_call_decorator(func):
+    def my_decorator(func):
         if hasattr(func, 'path'):
             return func
 
@@ -162,11 +276,11 @@ def RPC(path=None, method="POST"):
         def wrapped_rpc_call(*args, **kwargs):
             return func(*args, **kwargs)
 
-        wrapped_rpc_call.method = method.lower()
+        wrapped_rpc_call.http_method = method.lower()
         wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
         return wrapped_rpc_call
 
-    return RCP_call_decorator
+    return my_decorator
 
 
 class EventInterface(HTTPInterface):

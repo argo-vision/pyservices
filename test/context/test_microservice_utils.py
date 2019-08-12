@@ -36,7 +36,7 @@ class MicroServicesTestCase(unittest.TestCase):
         configuration = {"a": {"port": "1000", "address": "localhost"}}
         c = MicroServiceConfiguration(configuration, "a")
 
-        self.assertEqual("localhost:1000", c.address())
+        self.assertEqual("localhost:1000", c.host())
 
     def test_find_service(self):
         configuration = {"a": {"services": ["b"]}}
@@ -54,7 +54,7 @@ class MicroServicesTestCase(unittest.TestCase):
         configuration = {"a": {"services": ["b"], "port": "1000", "address": "localhost"}}
         c = MicroServiceConfiguration(configuration, "a")
 
-        self.assertEqual("localhost:1000", c.address_of("b"))
+        self.assertEqual("localhost:1000", c.host_of("b"))
 
     def test_microservice_services(self):
         configuration = {"a": {"services": ["b"], "port": "1000", "address": "localhost"}}

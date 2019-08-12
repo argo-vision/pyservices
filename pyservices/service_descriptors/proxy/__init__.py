@@ -4,7 +4,7 @@ from pyservices.service_descriptors.interfaces import RestResourceInterface, RPC
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.proxy.rest_proxy import RestDispatcherEndPoint
 from pyservices.service_descriptors.proxy.rpc_proxy import RPCDispatcherEndPoint
-from pyservices.utilities.exceptions import ServiceException
+from pyservices.utils.exceptions import ServiceException
 
 
 def create_service_connector(service, service_location):
@@ -34,7 +34,7 @@ def create_service_connector(service, service_location):
         else:
             raise NotImplementedError
 
-        iface_name = iface.get_endpoint_name()
+        iface_name = iface._get_interface_path()
         if iface_name in interfaces_endpoints:
             interfaces_endpoints[iface_name.replace('-', '_')]._merge_endpoints(endpoint)
         else:

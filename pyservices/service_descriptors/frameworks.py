@@ -1,27 +1,20 @@
-import collections
-import inspect
+import abc
 import itertools
-import logging
-import json
 from functools import wraps
-from json.decoder import JSONDecodeError
+from collections import defaultdict
 
 import falcon
 
 import pyservices as ps
-import abc
-
-from pyservices.data_descriptors import entity_codecs
-from pyservices.data_descriptors.fields import ComposedField
-from pyservices.utilities.exceptions import HTTPNotFound
-from pyservices.service_descriptors.interfaces import RestResourceInterface, \
-    RPCInterface, HTTPInterface
 from pyservices.context import Context
+from pyservices.service_descriptors.comunication_utils import HTTPRequest, HTTPResponse, \
+    get_data_from_request, get_updated_response
+from pyservices.service_descriptors.interfaces import RestResourceInterface, \
+    RPCInterface, HTTPInterface, InterfaceOperationDescriptor
 
 COMPONENT_DEPENDENCIES = []
 COMPONENT_KEY = __name__
 
-logger = logging.getLogger(__package__)
 
 # REST Framework
 FALCON = 'falcon'
@@ -30,7 +23,7 @@ FALCON = 'falcon'
 # FIXME document, rename as App in Wrapper?
 # FIXME Falcon generators can be generalized -> interfaces must provide COMMON CLASS FOR CALLSname
 
-class FrameworkApp(abc.ABC):
+class WSGIAppWrapper(abc.ABC):
     """ Base class for frameworks, it is used to crete WSGI applications.
     """
 
@@ -49,33 +42,23 @@ class FrameworkApp(abc.ABC):
                 if issubclass(iface_desc.__class__, HTTPInterface)]
 
 
-class FalconApp(FrameworkApp):
+class FalconWrapper(WSGIAppWrapper):
 
     def __init__(self):
         super().__init__()
         self.app = falcon.API()
+        self._resources = {}
 
     def register_route(self, service):
         # get falcon rest resources
-        resources = self._get_falcon_resource(service)
+        self._update_falcon_resource(service)
 
         # register routes and resources
-        for uri, r in resources.items():
-            path = f'/{service.service_base_path}/{uri}'
-            logger.error("Adding route: {}".format(path))
-            self.app.add_route(path, r())
+        for path, r in self._resources.items():
+            res = r()
+            self.app.add_route(path, res)
 
         self._log_registered_urls()
-
-    # TODO refactor, DRY
-    def _get_falcon_resource(self, service):
-        resources = {}
-        for iface in FrameworkApp._get_interfaces(service):
-            if isinstance(iface, RestResourceInterface):
-                resources.update(self.RestResourceGenerator(iface).generate())
-            elif isinstance(iface, RPCInterface):
-                resources.update(self.RPCResourceGenerator(iface).generate())
-        return resources
 
     def _log_registered_urls(self):
         # Logging registered uris
@@ -87,223 +70,54 @@ class FalconApp(FrameworkApp):
         for uri in registered_uris:
             ps.log.info("Registered: {}".format(uri))
 
-    class RPCResourceGenerator:
-        """ TODO builder document
+    def _update_falcon_resource(self, service):
+        # Update resources for every interface of the service
+        for iface in WSGIAppWrapper._get_interfaces(service):
+            self._update_resources(iface)
 
-        """
+    def _update_resources(self, iface: HTTPInterface):
+        # Update resources from interface
+        operations = defaultdict(list)
 
-        def __init__(self, iface):
-            self.iface = iface
-            # name: method
-            self.methods = iface.get_calls()
+        # Aggregate calls by paths
+        for op in iface._get_http_operations():
+            ps.log.error("Creating {} - {}".format(op.path, op.http_method))
+            operations[op.path].append(op)
 
-        def generate(self):
-            path = type(self.iface).get_endpoint_name()
-            res = dict()
-            for method in self.methods.values():
-                res_path = f'{path}/{method.path}'
-                logger.error("Creating {} - {}".format(res_path, method.method))
-                res[res_path] = \
-                    type(f'RPC{method.path}', (object,),
-                         {f'on_{method.method}': FalconApp.
-                         RPCResourceGenerator._falcon_rpc_wrapper(method)})
-            return res
+        # Update single resource for path
+        for path, ops in operations.items():
+            self._update_resource(path, ops)
 
-        @staticmethod
-        def _falcon_rpc_wrapper(call):
-            @wraps(call)
-            def falcon_handler(inner_self, req, res):
-                try:
-                    if call.method in ["put", "post"]:
-                        data = req.stream.read()
-                        rpc_params = json.loads(data) if data else {}
+    def _update_resource(self, path: str, operations: list):
+        # Update/create single resource for given path
+        resource_class_name = f'FalconResource@{path}'
+        falcon_resource_dict = {f'on_{op.http_method}':
+                                FalconWrapper.http_operation_wrapper(op)
+                                for op in operations}
+        resource = self._resources.get(path)
+        if resource:
+            [setattr(resource, name, method)
+             for name, method in falcon_resource_dict.items()]
+        else:
+            self._resources[path] = \
+                type(resource_class_name, (object,), falcon_resource_dict)
 
-                    elif call.method == "get":
-                        rpc_params = req.params
-                    else:
-                        raise NotImplementedError()
-
-                    body = call(**rpc_params)
-                    res.body = json.dumps(body) if body else None
-
-                except JSONDecodeError as e:
-                    res.status = falcon.HTTP_400
-                except TypeError as e:
-                    res.status = falcon.HTTP_400
-                except Exception as e:  # TODO be more precise, exception translations #23
-                    res.status = falcon.HTTP_500
-
-            return falcon_handler
-
-    class RestResourceGenerator:
-        """Builder class used to produce Falcon-like REST Resources."""
-
-        def __init__(self, iface):
-            """Initialize the meta model.
-
-            Attributes:
-                iface (pyservices.interfaces.Restful): The interface from which the
-                    Falcon Resources are generated
-            """
-            self.iface = iface
-            self.meta_model = iface.meta_model
-            self.codec = iface.codec or entity_codecs.JSON
-            methods = iface.get_calls()
-            self.collect = methods.get('collect')
-            self.add = methods.get('add')
-            self.detail = methods.get('detail')
-            self.update = methods.get('update')
-            self.delete = methods.get('delete')
-
-        def _resource_collection_get(self, req, resp):
-            def get_callable_collect():
-                for c in self.collect:
+    @staticmethod
+    def http_operation_wrapper(call: InterfaceOperationDescriptor):
+                @wraps(call)
+                def falcon_handler(inner_self, req, res, **kwargs):
                     try:
-                        sg = inspect.signature(c)
-                        sg.bind(**req.params)
-                        return c
-                    except TypeError:
-                        continue
+                        data = get_data_from_request(call, HTTPRequest(req.stream.read(), req.params), **kwargs)
+                        body = call.method(**data)
+                        updated_res: HTTPResponse = get_updated_response(call, body)
+                        res.body = updated_res.body
 
-            collect = get_callable_collect()
+                    except Exception as e:  # TODO be more precise, exception translations #23
+                        res.status = falcon.HTTP_500
 
-            if collect is None:
-                raise falcon.HTTPForbidden
-
-            try:
-                res = collect(**req.params)
-            except Exception as e:
-                logger.error("{} operation has failed: {}"
-                             .format(collect.__name__, e))
-                raise falcon.HTTPInternalServerError
-
-            if not isinstance(res, collections.abc.Iterable):
-                logger.error("{} return a non iterable object"
-                             .format(collect.__name__))
-                raise falcon.HTTPInternalServerError
-
-            if not all(map(lambda x: isinstance(x, self.meta_model.get_class()),
-                           res)):
-                logger.error(
-                    "{} returns a something that is not of the model type"
-                        .format(collect.__name__))
-                raise falcon.HTTPInternalServerError
-
-            try:
-                resp.body = self.codec.encode(res)
-            except Exception as e:
-                logger.error("Encoding operations has failed: {}".format(e))
-                raise falcon.HTTPInternalServerError
-
-            resp.status = falcon.HTTP_200
-            resp.http_content_type = self.codec.http_content_type
-
-        def _resource_collection_put(self, req, resp):
-            if not self.add:
-                raise falcon.HTTPForbidden
-
-            try:
-                resource = self.codec.decode(req.stream.read(), self.meta_model)
-            except Exception as e:
-                logger.error("Cannot decode the received model: {}".format(e))
-                raise falcon.HTTPBadRequest
-
-            try:
-                res_id = self.add(resource)
-            except Exception as e:
-                logger.error("Cannot create resource: {}".format(e))
-                raise falcon.HTTPInternalServerError
-
-            resp.status = falcon.HTTP_CREATED
-            resp.location = f'{req.path}/{res_id}'
-
-        def _resource_get(self, req, resp, **kwargs):
-            if not self.detail:
-                raise falcon.HTTPForbidden
-
-            resp.http_content_type = self.codec.http_content_type
-
-            res_id = self.meta_model.validate_id(**kwargs)
-            if res_id is None:
-                raise falcon.HTTPNotFound
-
-            try:
-                detail = self.detail(res_id)
-            except HTTPNotFound:
-                raise falcon.HTTPNotFound
-            except Exception as e:
-                logger.error("Unexpected exception from detail: {}".format(e))
-                raise falcon.HTTPInternalServerError
-
-            if not isinstance(detail, self.meta_model.get_class()):
-                logger.error("Detail returned an invalid model")
-                raise falcon.HTTPInternalServerError
-
-            try:
-                resp.body = self.codec.encode(detail)
-            except Exception as e:
-                logger.error("Cannot encode data")
-                raise falcon.HTTPInternalServerError
-
-        def _resource_post(self, req, resp, **kwargs):
-            if not self.update:
-                raise falcon.HTTPForbidden
-
-            res_id = self.meta_model.validate_id(**kwargs)
-            if res_id is None:
-                raise falcon.HTTPNotFound
-
-            try:
-                # TODO update requires all the non optional fields
-                resource = self.codec.decode(req.stream.read(), self.meta_model)
-            except Exception as e:
-                logger.error("Cannot decode data: {}".format(e))
-                raise falcon.HTTPBadRequest
-
-            try:
-                self.update(res_id, resource)
-            except Exception as e:
-                logger.error("Cannot update data: {}".format(e))
-                raise falcon.HTTPInternalServerError
-
-        def _resource_delete(self, req, resp, **kwargs):
-            if not self.delete:
-                raise falcon.HTTPForbidden
-
-            res_id = self.meta_model.validate_id(**kwargs)
-            if res_id is None:
-                raise falcon.HTTPNotFound
-
-            try:
-                self.delete(res_id)
-            except Exception as e:
-                logger.error("Exception duing delete: {}".format(e))
-                raise falcon.HTTPInternalServerError
-
-            resp.status = falcon.HTTP_200
-
-        def generate(self):
-            path = type(self.iface).get_endpoint_name()
-            res = dict()
-            res[path] = type(f'REST{self.meta_model.name}s', (object,), {
-                'on_get': self._resource_collection_get,
-                'on_put': self._resource_collection_put})
-
-            if isinstance(self.meta_model.primary_key_field, ComposedField):
-                id_dimension = len(
-                    self.meta_model.primary_key_field.meta_model.fields)
-            else:
-                id_dimension = 1
-            id_path = '/'.join(['{{id_field_{}}}'.format(i)
-                                for i in range(id_dimension)])
-            res[f'{path}/{id_path}'] = type(f'REST{self.meta_model.name}',
-                                            (object,), {
-                                                'on_get': self._resource_get,
-                                                'on_post': self._resource_post,
-                                                'on_delete': self._resource_delete})
-            return res
+                return falcon_handler
 
 
 def register_component(ctx: Context):
-    app = FalconApp()  # TODO falcon is the only WSGI app supported
+    app = FalconWrapper()  # TODO falcon is the only WSGI app supported
     ctx.register_app(app)  # TODO think about register_app (get_app)

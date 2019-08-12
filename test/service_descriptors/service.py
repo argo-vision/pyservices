@@ -51,14 +51,14 @@ class AccountManager(Service):
         def detail(self, res_id):
             return accounts[int(res_id)]
 
-        def add(self, account):
+        def add(self, resource):
             res_id = '123'
-            assert type(account) is Account
+            assert type(resource) is Account
             return res_id
 
-        def update(self, res_id, account):
+        def update(self, res_id, resource):
             assert type(res_id) is int
-            assert type(account) is Account
+            assert type(resource) is Account
 
         def delete(self, res_id):
             assert type(res_id) is int

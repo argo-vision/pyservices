@@ -14,12 +14,12 @@ class MicroServiceConfiguration:
             raise ValueError("Cannot find service")
         self.conf = conf
 
-    def address(self) -> str:
-        return self.microservice_address(self.name)
+    def host(self) -> str:
+        return self.microservice_host(self.name)
 
-    def address_of(self, service: str) -> str:
+    def host_of(self, service: str) -> str:
         micro = self.microservice_of(service)
-        return self.microservice_address(micro)
+        return self.microservice_host(micro)
 
     def services(self) -> List[str]:
         return self.conf[self.name].get("services", [])
@@ -31,14 +31,14 @@ class MicroServiceConfiguration:
         return list(self.conf.keys())
 
     @staticmethod
-    def _current_microservice_name() -> str:
+    def _current_micrFoservice_name() -> str:
         """
             service name from os variable GAE_SERVICE
         """
         service = os.environ.get("GAE_SERVICE")
         return service.lower() if service is not None else ""
 
-    def microservice_address(self, microservice_name) -> str:
+    def microservice_host(self, microservice_name) -> str:
         microservice = self.conf.get(microservice_name)
         if microservice is None:
             raise ValueError("Micro service not found")

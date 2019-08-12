@@ -4,8 +4,8 @@ from pyservices.context.dependencies import create_application
 from pyservices.context.dependencies import microservice_sorted_dependencies, \
     components_graph, topological_sort, is_acyclic
 from pyservices.context.microservice_utils import MicroServiceConfiguration
-from pyservices.service_descriptors.frameworks import FrameworkApp
-from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
+from pyservices.service_descriptors.frameworks import WSGIAppWrapper
+from pyservices.utils.exceptions import MicroServiceConfigurationError, \
     ServiceDependenciesError
 from test.context.configuration import configurations
 
@@ -72,6 +72,16 @@ class TestContext(unittest.TestCase):
 
 
     # NOTE: this is commented because is false
+    # TODO(a-tomasi):
+    #   - if the test makes no sense just remove it
+    #   - if the test doesn't do what it does just fix it
+    #   Some details:
+    #   - for the initial phase of the project we made the, although strong, assumption
+    #       that cyclic deps are not supported. Not many use cases will be affected by this
+    #       temporary choice and certainly not project we are working in
+    #   - when this assumption will fall and then the code will be adaped in a proper way
+    #       we can remove the test, until then it's dangerous ignore tests
+    #       without WELL EXPLAINED reasons.
     def ignored_testCyclicDeps(self):
         conf = MicroServiceConfiguration(configurations, 'micro-service-circular')
         self.assertRaises(ServiceDependenciesError, create_application, conf)
@@ -93,7 +103,7 @@ class TestContext(unittest.TestCase):
     def testCreateApplication(self):
         conf = MicroServiceConfiguration(configurations, 'micro-service1')
         app = create_application(conf)
-        self.assertTrue(isinstance(app, FrameworkApp))
+        self.assertTrue(isinstance(app, WSGIAppWrapper))
         conf = MicroServiceConfiguration(configurations, 'micro-service2')
         app = create_application(conf)
-        self.assertTrue(isinstance(app, FrameworkApp))
+        self.assertTrue(isinstance(app, WSGIAppWrapper))

@@ -4,7 +4,7 @@ import datetime
 import json
 from typing import Union
 
-from pyservices.utilities.exceptions import MetaTypeException, CodecException
+from pyservices.utils.exceptions import MetaTypeException, CodecException
 from pyservices.service_descriptors import http_content_types
 from pyservices.data_descriptors.meta_model import MetaModel
 from pyservices.data_descriptors.fields import ListField, ComposedField, \
@@ -39,7 +39,7 @@ def instance_to_dict_repr(val: object):
     """Recursively generates a dict (or a list of dict).
 
     Attributes:
-        val (object):  The instance of the object.
+        val (object):  The instance of the object. TODO supports not only obj
     """
 
     # Single object
@@ -159,6 +159,18 @@ class Codec(abc.ABC):
         """
         pass
 
+    @classmethod
+    @abc.abstractclassmethod
+    def decode_unshaped(cls, value: str):
+        """ Given a string representing some data,
+        returns data in python formats
+
+        Args:
+            value (str): A string representing the data.
+        """
+        pass
+
+
 
 class JSON(Codec):
     """A codec for the JSON format.
@@ -179,3 +191,10 @@ class JSON(Codec):
             return dict_repr_to_instance(json.loads(value), meta_model)
         except Exception as e:
             raise CodecException('Error while decoding the data. {}'.format(e))
+
+    @classmethod
+    def decode_unshaped(cls, value: str):
+        try:
+            return json.loads(value)
+        except Exception as e:
+            raise CodecException(f'Error while decoding the data. - {e}')
