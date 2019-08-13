@@ -1,6 +1,9 @@
 import os
 import importlib
 
+from pyservices.context.dependencies import dependent_remote_components
+from pyservices.utils.exceptions import MicroserviceConfigurationError
+
 _config_dir = 'uservices'
 
 
@@ -78,7 +81,10 @@ def services(service_microservice: str) -> list:
         microservice = microservice_name(service_microservice)
     except ValueError:
         microservice = service_microservice
-    return config[microservice]['services']
+    try:
+        return config[microservice]['services']
+    except KeyError as e:
+        raise MicroserviceConfigurationError(e)
 
 
 def all_services():
@@ -95,3 +101,12 @@ def microservice_name(service: str):
         if service in config['services']:
             return ms
     raise ValueError('Service not present')
+
+
+def remote_dependent_components() -> set:
+    """
+    Returns:
+        The remote components which depends on current_microservice
+    """
+    ms = current_microservice()
+    dependent_remote_components(ms)

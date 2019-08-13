@@ -7,9 +7,8 @@ from wsgiref import simple_server
 
 import requests
 
-from pyservices.context.microservice_utils import MicroserviceConfiguration
 from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
-from pyservices.service_descriptors.interfaces import InterfaceOperationDescriptor
+import pyservices.context.microservice_utils as config_utils
 from pyservices.service_descriptors.proxy import create_service_connector
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.components.service_exposition1 import ServiceEx1
@@ -117,12 +116,12 @@ class TestRestServer(unittest.TestCase):
 
 class TestRestServerExposition(unittest.TestCase):
     _old_service_name = os.getenv("GAE_SERVICE")
-    _old_config_dir = MicroserviceConfiguration._config_dir
+    _old_config_dir = config_utils._config_dir
     _my_config_path = 'test.service_descriptors.uservices'
 
     @classmethod
     def setUpClass(cls):
-        MicroserviceConfiguration._config_dir = cls._my_config_path
+        config_utils._config_dir = cls._my_config_path
 
     @classmethod
     def tearDownClass(cls):
@@ -130,7 +129,7 @@ class TestRestServerExposition(unittest.TestCase):
             os.environ["GAE_SERVICE"] = cls._old_service_name
         else:
             os.environ.pop("GAE_SERVICE")
-        MicroserviceConfiguration._config_dir = cls._old_config_dir
+        config_utils._config_dir = cls._old_config_dir
 
     def setUp(self):
         self.address = '0.0.0.0'
@@ -152,10 +151,10 @@ class TestRestServerExposition(unittest.TestCase):
 
     def testSelectiveExpositionDevelopment(self):
         self._put_env_and_start_server('DEVELOPMENT')
-        self.assertTrue(requests.post(f'{self.base_path1}/expo/my-dep-op').json())
-        self.assertTrue(requests.post(f'{self.base_path1}/expo/my-forbidden-op').json())
-        self.assertTrue(requests.post(f'{self.base_path3}/expo/my-op').json())
-        self.assertTrue(requests.post(f'{self.base_path3}/expo/my-mandatory-op').json())
+        self.assertTrue(requests.post(f'{self.base_path1}/expo/my-dep-op'))
+        self.assertTrue(requests.post(f'{self.base_path1}/expo/my-forbidden-op'))
+        self.assertTrue(requests.post(f'{self.base_path3}/expo/my-op'))
+        self.assertTrue(requests.post(f'{self.base_path3}/expo/my-mandatory-op'))
 
     def testSelectiveExpositionProductionForbidden(self):
         self._put_env_and_start_server('PRODUCTION')
@@ -190,7 +189,7 @@ class TestRestServerExposition(unittest.TestCase):
 
         os.environ["GAE_SERVICE"] = "micro-service1"
         self.app_wrapper1.register_route(self.service1)
-        os.environ["GAE_SERVICE"] = "micro-service3"
+        os.environ["GAE_SERVICE"] = "micro-service2"
         self.app_wrapper3.register_route(self.service3)
         self.httpd1 = simple_server.make_server(self.address,
                                                 self.port1,

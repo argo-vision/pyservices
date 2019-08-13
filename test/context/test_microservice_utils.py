@@ -47,7 +47,7 @@ class TestMicroservices(unittest.TestCase):
         ss = config_utils.all_services()
 
         self.assertEqual([get_path('service1'), get_path('service2'),
-                         get_path('service3')], ss)
+                         get_path('service3')], sorted(ss))
 
     def test_current_microservice_name(self):
         self.assertEqual("microservice1", config_utils.current_microservice())

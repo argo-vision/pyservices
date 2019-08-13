@@ -12,13 +12,12 @@ class DefaultUrlComposer:
     Class url composer
     """
 
-    def __init__(self, micro_service_configuration):
-        self._ms_config = micro_service_configuration
-
-    def get_https_url(self, microservice):
+    @staticmethod
+    def get_https_url(microservice):
         return _get_url('https', config_utils.host(microservice))
 
-    def get_http_url(self, microservice):
+    @staticmethod
+    def get_http_url(microservice):
         return _get_url('http', config_utils.host(microservice))
 
 
@@ -29,11 +28,13 @@ class GCloudUrlComposer(DefaultUrlComposer):
     """
     ending = 'com'
 
-    def get_https_url(self, service):
-        return _get_url('https', self._get_host(service))
+    @staticmethod
+    def get_https_url(service):
+        return _get_url('https', GCloudUrlComposer._get_host(service))
 
-    def get_http_url(self, service):
-        return _get_url('http', self._get_host(service))
+    @staticmethod
+    def get_http_url(service):
+        return _get_url('http', GCloudUrlComposer._get_host(service))
 
     @classmethod
     def _get_host(cls, service):

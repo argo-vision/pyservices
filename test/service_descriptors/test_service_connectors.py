@@ -1,3 +1,4 @@
+import os
 import unittest
 from threading import Thread
 from wsgiref import simple_server
@@ -23,6 +24,18 @@ account_manager_base_path = f'http://{address}:{account_manager_port}/{AccountMa
 
 
 class ServiceConnectorTest(unittest.TestCase):
+    _old_service_name = os.getenv("GAE_SERVICE")
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ["GAE_SERVICE"] = "micro-service1"
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls._old_service_name:
+            os.environ["GAE_SERVICE"] = cls._old_service_name
+        else:
+            os.environ.pop("GAE_SERVICE")
 
     def setUp(self):
         service = AccountManager()
