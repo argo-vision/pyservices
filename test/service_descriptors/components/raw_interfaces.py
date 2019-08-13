@@ -3,7 +3,7 @@ from pyservices.data_descriptors.fields import IntegerField
 from pyservices.data_descriptors.meta_model import MetaModel
 from pyservices.service_descriptors.interfaces import RPCInterface, \
     RestResourceInterface, EventInterface
-from pyservices.utilities.queues import QueuesType
+from pyservices.utils.queues import QueuesType
 
 
 class TestRPCInterface(RPCInterface):

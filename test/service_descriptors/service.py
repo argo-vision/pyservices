@@ -1,7 +1,7 @@
 from pyservices.service_descriptors.interfaces import RPC, \
     RestResourceInterface, RPCInterface, EventInterface, event
 from pyservices.service_descriptors.layer_supertypes import Service
-from pyservices.utilities.queues import QueuesType
+from pyservices.utils.queues import QueuesType
 from test.data_descriptors.meta_models import *
 
 

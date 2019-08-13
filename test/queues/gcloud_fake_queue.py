@@ -2,7 +2,7 @@ import threading
 
 import requests
 
-from pyservices.utilities.queues import Queue
+from pyservices.utils.queues import Queue
 
 
 class _GcloudFakeQueue:

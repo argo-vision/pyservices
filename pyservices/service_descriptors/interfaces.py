@@ -7,7 +7,7 @@ from typing import NamedTuple
 from pyservices import JSON
 from pyservices.data_descriptors.entity_codecs import Codec
 from pyservices.data_descriptors.fields import ComposedField
-from pyservices.utilities.gcloud import check_if_gcloud
+from pyservices.utils.gcloud import check_if_gcloud
 
 
 class InterfaceBase(abc.ABC):
@@ -289,7 +289,7 @@ class EventInterface(HTTPInterface):
     queue_configuration = None
 
     def __init__(self, service):
-        from pyservices.utilities.queues import get_queue
+        from pyservices.utils.queues import get_queue
         super().__init__(service)
         self.queue = get_queue(self.queue_type, self.queue_configuration)
 

@@ -5,7 +5,7 @@ Tests for handler
 from unittest import TestCase, mock
 from unittest.mock import call
 
-from pyservices.utilities.handlers import Handler
+from pyservices.utils.handlers import Handler
 
 
 class TestHandler(TestCase):

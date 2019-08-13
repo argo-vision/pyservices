@@ -8,7 +8,7 @@ import urllib
 
 from google.cloud import tasks_v2
 
-from pyservices.utilities.queues import GcloudTaskQueue
+from pyservices.utils.queues import GcloudTaskQueue
 from test.queues.gcloud_fake_queue import _GcloudFakeQueue
 
 

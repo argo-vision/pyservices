@@ -7,8 +7,8 @@ from multiprocessing import Pipe
 from google.cloud import tasks_v2
 from persistqueue import FIFOSQLiteQueue
 
-from pyservices.utilities.gcloud import check_if_gcloud, get_service_id, get_location_id, get_project_id
-from pyservices.utilities.pullers import Puller
+from pyservices.utils.gcloud import check_if_gcloud, get_service_id, get_location_id, get_project_id
+from pyservices.utils.pullers import Puller
 
 logger = logging.getLogger(__package__)
 

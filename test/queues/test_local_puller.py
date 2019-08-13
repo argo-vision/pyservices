@@ -6,8 +6,8 @@ import unittest
 from unittest.mock import Mock
 
 from pyservices.service_descriptors.layer_supertypes import ServiceOperationReference
-from pyservices.utilities.pullers import Puller
-from pyservices.utilities.queues import Queue
+from pyservices.utils.pullers import Puller
+from pyservices.utils.queues import Queue
 
 
 class TestLocalPuller(unittest.TestCase):

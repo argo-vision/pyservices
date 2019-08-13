@@ -9,7 +9,7 @@ from unittest import mock
 #from pymongo.errors import DuplicateKeyError
 from pymongo.errors import DuplicateKeyError
 
-from pyservices.utilities.savers import Saver
+from pyservices.utils.savers import Saver
 
 
 class TestSaver(unittest.TestCase):

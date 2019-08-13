@@ -3,12 +3,12 @@ from threading import Thread
 from unittest.mock import Mock
 from wsgiref import simple_server
 
-from pyservices.utilities import queues
+from pyservices.utils import queues
 
 from pyservices.context import context
 from pyservices.service_descriptors.frameworks import FalconWrapper
 from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.utilities.queues import Queue
+from pyservices.utils.queues import Queue
 from pyservices.utils.exceptions import ClientException
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.components.service1 import Service1, note_mm
