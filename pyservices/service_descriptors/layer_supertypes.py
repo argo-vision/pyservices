@@ -49,19 +49,19 @@ class ServiceOperationReference:
 
     def get_service(self, service_name):
         keyword_service_name = Service._module_prefix + "." + service_name
-        return self.ctx.get_component(keyword_service_name)
+        return self.ctx.get_component(keyword_service_name.lower())
 
     def get_interface(self, interface_name):
         for s in self.service:
             instance = s._request_handler.instance  # FIXME: this will change
-            if instance.__class__.__name__ == interface_name:
+            if instance.__class__.__name__.lower() == interface_name.lower():
                 return instance
         raise Exception()
 
     def get_method(self, method_name):
         methods = inspect.getmembers(self.interface, lambda m: inspect.ismethod(m))
         for m in methods:
-            if m[0] == method_name:
+            if m[0] == method_name.lower():
                 return m[1]
         raise Exception()
 

@@ -303,7 +303,7 @@ class EventInterface(HTTPInterface):
 
     def _get_http_operations(self):
         def create_descriptor(method):
-            InterfaceOperationDescriptor(
+            return InterfaceOperationDescriptor(
                 interface=self,
                 method=method,
                 http_method=method.http_method,
@@ -329,7 +329,7 @@ def event(path=None, method="GET"):
             def enqueue_message(message):
                 try:
                     task = self.queue.build_task(self.service, self, func, message)
-                    self.queue.add_task(task)
+                    return self.queue.add_task(task)
                 except:
                     return "nack"
 
@@ -339,7 +339,7 @@ def event(path=None, method="GET"):
 
             def dispatch_message(message):
                 op = process_message if self.queue.is_processing() else enqueue_message
-                op(message)
+                return op(message)
 
             # Dispatching:
             return dispatch_message({"args": args, "kwargs": kwargs})

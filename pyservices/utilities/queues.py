@@ -4,12 +4,11 @@ import logging
 import urllib
 from enum import Enum
 from multiprocessing import Pipe
-
-import requests
+from google.cloud import tasks_v2
 from persistqueue import FIFOSQLiteQueue
 
 from pyservices.utilities.gcloud import check_if_gcloud, get_service_id, get_location_id, get_project_id
-from pyservices.utilities.pullers import GcloudFakeQueuePuller, Puller
+from pyservices.utilities.pullers import Puller
 
 logger = logging.getLogger(__package__)
 
@@ -99,6 +98,11 @@ class Queue(BaseQueue):
     """
     A concurrent queue multi producer single consumer.
     """
+    _last_id = 0
+
+    def _get_next_id(self):
+        self._last_id += 1
+        return self._last_id
 
     class Message:
         """
@@ -108,6 +112,7 @@ class Queue(BaseQueue):
         def __init__(self, data, queue):
             self.data = data
             self._queue = queue
+            self.id = id
 
         def ack(self):
             """
@@ -134,9 +139,9 @@ class Queue(BaseQueue):
 
     @staticmethod
     def build_task(service, interface, method, data):
-        service_method_reference = {'service_name': service,
-                                    'interface_name': interface,
-                                    'method_name': method}
+        service_method_reference = {'service_name': service.__class__.__name__,
+                                    'interface_name': interface.__class__.__name__,
+                                    'method_name': method.__name__}
         task = {'reference': service_method_reference, 'data': data}
         return task
 
@@ -145,7 +150,13 @@ class Queue(BaseQueue):
         Put a value in the queue
         :param value: Value to put in the queue
         """
+        if task is not None:
+            task['id'] = self._get_next_id()
         self._sx.send(task)
+        return task['id']
+
+    def quit(self):
+        self._sx.send(None)
 
     def get(self):
         """
@@ -157,17 +168,20 @@ class Queue(BaseQueue):
         # FIXME: FIXME: FIXME: this is really bad too
         return self.Message(data, self)
 
+    def is_processing(self):
+        return False
+
 
 class GcloudTaskQueue(BaseQueue):
     """Wrapper for gcloud task queue rest interface """
 
-    def __init__(self, project_id, location_id, queue_id):
+    def __init__(self, project, location, queue):
         """ Initialize the gcloud task queue
 
         Attributes:
-            project_id (str): project id from gcloud console
-            location_id (str): location of the appengine application
-            queue_id (str) : queue name. Queue must be created from gcloud sdk
+            project (str): project id from gcloud console
+            location (str): location of the appengine application
+            queue (str) : queue name. Queue must be created from gcloud sdk
 
 
         Gcloud sdk CLI:
@@ -192,8 +206,8 @@ class GcloudTaskQueue(BaseQueue):
         # client = CloudTasksClient()
 
         # Construct the fully qualified queue name.
-        self.client = _GcloudFakeQueue()  # Fake queue for debug
-        self.parent = self.client.queue_path(project_id, location_id, queue_id)
+        self.client = tasks_v2.CloudTasksClient()
+        self.parent = self.client.queue_path(project, location, queue)
 
     @staticmethod
     def initialize_and_run(configuration):
@@ -268,41 +282,6 @@ class GcloudTaskQueue(BaseQueue):
     def is_processing(self):
         from pyservices.service_descriptors.frameworks import request_info
         return 'AppEngine-Google' in request_info.user_agent
-
-
-class _GcloudFakeQueue:
-    _queue = Queue()
-
-    def __init__(self):
-        self._puller = GcloudFakeQueuePuller(self._queue)
-        self._parent = []
-
-    def queue_path(self, project_id, location_id, queue_id):
-        self._parent = [project_id, location_id, queue_id]
-        return self._parent
-
-    def create_task(self, parent, task):
-        app_engine_http_request = task['app_engine_http_request']
-        url = app_engine_http_request['url']
-        http_method = app_engine_http_request['http_method']
-
-        if http_method == "POST":
-            kwargs = {'data': app_engine_http_request['body']}
-            call = requests.post
-        elif http_method == "PUT":
-            kwargs = {'data': app_engine_http_request['body']}
-            call = requests.put
-        elif http_method == "GET":
-            call = requests.get
-            kwargs = {}
-        else:
-            raise NotImplementedError()
-
-        final_task = {'call': call, 'url': url, 'args': kwargs}
-        self._queue.add_task(final_task)
-
-        response = {'name': "Fake gcloud task", 'task': final_task}
-        return response
 
 
 class QueuesType(Enum):

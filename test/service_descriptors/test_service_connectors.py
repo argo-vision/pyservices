@@ -1,9 +1,14 @@
 import unittest
 from threading import Thread
+from unittest.mock import Mock
 from wsgiref import simple_server
 
+from pyservices.utilities import queues
+
+from pyservices.context import context
 from pyservices.service_descriptors.frameworks import FalconWrapper
 from pyservices.service_descriptors.proxy import create_service_connector
+from pyservices.utilities.queues import Queue
 from pyservices.utils.exceptions import ClientException
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.components.service1 import Service1, note_mm
@@ -40,6 +45,9 @@ configurations = {
 class ServiceConnectorTest(unittest.TestCase):
 
     def setUp(self):
+        queues.get_queue = Mock()
+        self.queue = Queue()
+        queues.get_queue.return_value = self.queue
         service = AccountManager()
 
         app_wrapper = FalconWrapper()  # TODO the only WSGI framework implemented
@@ -48,6 +56,7 @@ class ServiceConnectorTest(unittest.TestCase):
         t = Thread(target=self.httpd.serve_forever)
         t.start()
 
+        self.service = service
         self.connector = create_service_connector(AccountManager, account_manager_base_path)
 
     def tearDown(self):
@@ -158,3 +167,20 @@ class ServiceConnectorTest(unittest.TestCase):
     def testClientRPCReturnValue(self):
         note = self.connector.notes_op.get_note(note_id=0)
         self.assertEqual(note, 'my note')
+
+    def testClientEvent(self):
+        context.context = Mock()
+        context.context.get_component.return_value = self.connector
+        first_event_id = self.connector.events.test_queue(arg1="test1", arg2="test2")
+
+        self.assertEqual(self.queue._last_id, first_event_id)
+
+    def testSequenceEvents(self):
+        context.context = Mock()
+        context.context.get_component.return_value = self.connector
+        task1 = self.connector.events.test_queue(arg1="test1", arg2="test2")
+        task2 = self.connector.events.test_queue(arg1="test1", arg2="test2")
+        task3 = self.connector.events.test_queue(arg1="test1", arg2="test2")
+        task4 = self.connector.events.test_queue(arg1="test1", arg2="test2")
+
+        self.assertEqual(self.queue._last_id, task4)

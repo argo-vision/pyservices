@@ -58,59 +58,8 @@ class Puller:
         """
         if self._worker is None:
             return
-        self._queue.add_task(None)
+        self._queue.quit()
         self._worker.join()
         self._worker = None
 
 
-class GcloudFakeQueuePuller:
-    """
-    Simple puller class
-    """
-
-    def __init__(self, queue):
-        """
-        Create a puller that takes data from the queue and feed the processor.
-        :param queue:
-        """
-        self._worker = None
-        self._queue = queue
-
-    def _work(self):
-        """
-        Internal worker that takes from the queue and process the value.
-        It stops if a None message is found.
-        :return:
-        """
-        while True:
-            request = self._queue.get()
-            if request.data is None:
-                return
-            if 'call' not in request.data:
-                return
-            if 'url' not in request.data:
-                return
-            call = request.data['call']
-            url = request.data['url']
-            args = request.data['args']
-            # call("http://localhost:8080" + url, **args)
-
-    def start(self):
-        """
-        Start the processing if it is not running
-        """
-        if self._worker is not None:
-            return
-        self._worker = threading.Thread(target=self._work)
-        self._worker.start()
-
-    def stop(self):
-        """
-        Stop the processing - if is is running - using a poison message.
-        The queued messages will be processed.
-        """
-        if self._worker is None:
-            return
-        self._queue.add_task(None)
-        self._worker.join()
-        self._worker = None

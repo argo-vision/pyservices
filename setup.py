@@ -20,6 +20,8 @@ setuptools.setup(
         "persist-queue==0.4.1",
         "falcon==1.4.1",
         "pymongo==3.7.2",
-        "requests==2.21.0"
+        "requests==2.21.0",
+        "google-cloud-tasks==1.1.0"
+
     ]
 )

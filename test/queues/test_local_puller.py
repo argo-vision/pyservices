@@ -12,6 +12,10 @@ from pyservices.utilities.queues import Queue
 
 class TestLocalPuller(unittest.TestCase):
 
+    def setUp(self):
+        self.service = Mock()
+        self.interface = Mock()
+
     def test_simple_counter(self):
         queue = Queue()
         queue._puller = Puller(queue)
@@ -27,7 +31,7 @@ class TestLocalPuller(unittest.TestCase):
         queue._puller = Puller(queue)
         TestLocalPuller.mock_reference(handler.feed)
 
-        TestLocalPuller.fill_queue(queue)
+        self.fill_queue(queue)
         queue._puller.start()
         queue._puller.stop()
 
@@ -51,10 +55,11 @@ class TestLocalPuller(unittest.TestCase):
         ServiceOperationReference.get_interface = Mock()
         ServiceOperationReference.get_method = call
 
-    @staticmethod
-    def fill_queue(queue):
+    def fill_queue(self, queue):
         for i in range(10):
-            task = queue.build_task("test", "test", "test", data=[1, 2, 3])
+            method = Mock()
+            method.__name__ = "test"
+            task = queue.build_task(self.service, self.interface, method, data=[1, 2, 3])
             queue.add_task(task)
         return None
 
