@@ -67,9 +67,8 @@ class TestContext(unittest.TestCase):
         self.assertTrue(is_acyclic(acyclic))
 
     def testAcyclicGraph2(self):
-        acyclic = {'S1': ['C1', 'F'], 'C1': ['C2'], 'C2': ['S3'], 'S2': ['F', 'C1', 'S1'], 'F':[]}
+        acyclic = {'S1': ['C1', 'F'], 'C1': ['C2'], 'C2': ['S3'], 'S2': ['F', 'C1', 'S1'], 'F': []}
         self.assertTrue(is_acyclic(acyclic))
-
 
     # NOTE: this is commented because is false
     # TODO(a-tomasi):

@@ -17,6 +17,7 @@ class TestGcloudTaskQueue(unittest.TestCase):
         self.gcloud_task_queue = GcloudTaskQueue(**self.parent_parameters)
         self.fake_queue = _GcloudFakeQueue()
 
+
     def test_parent_queue(self):
         self.assertEqual(self.gcloud_task_queue.parent,
                          self.gcloud_task_queue.client.queue_path(**self.parent_parameters))
@@ -28,11 +29,12 @@ class TestGcloudTaskQueue(unittest.TestCase):
         task = {"method": "GET", "relative_url": expected_url}
         expected_name = 'Fake gcloud task'
 
-        response = self.gcloud_task_queue.add_task(**task)
+        response = self.gcloud_task_queue.add_task(task)
 
         self.assertEqual(response['name'], expected_name)
         self.assertEqual(response['task']['url'], expected_url)
         self.assertEqual(response['task']['args'], expected_args)
+
 
     def test_add_get_task_with_params(self):
         self.gcloud_task_queue.client = self.fake_queue
@@ -43,11 +45,12 @@ class TestGcloudTaskQueue(unittest.TestCase):
         task = {"method": "GET", "relative_url": url, "data": expected_params}
         expected_name = 'Fake gcloud task'
 
-        response = self.gcloud_task_queue.add_task(**task)
+        response = self.gcloud_task_queue.add_task(task)
 
         self.assertEqual(response['name'], expected_name)
         self.assertEqual(response['task']['url'], expected_url)
         self.assertEqual(response['task']['args'], expected_args)
+
 
     def test_add_post_task(self):
         self.gcloud_task_queue.client = self.fake_queue
@@ -57,8 +60,9 @@ class TestGcloudTaskQueue(unittest.TestCase):
         task = {"method": "post", "relative_url": expected_url, "data": expected_body}
         expected_name = 'Fake gcloud task'
 
-        response = self.gcloud_task_queue.add_task(**task)
+        response = self.gcloud_task_queue.add_task(task)
 
         self.assertEqual(response['name'], expected_name)
         self.assertEqual(response['task']['url'], expected_url)
         self.assertEqual(response['task']['args'], json_expected_body)
+

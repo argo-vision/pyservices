@@ -1,6 +1,7 @@
 from pyservices.service_descriptors.interfaces import RPC, \
-    RestResourceInterface, RPCInterface
+    RestResourceInterface, RPCInterface, EventInterface, event
 from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.utilities.queues import QueuesType
 from test.data_descriptors.meta_models import *
 
 
@@ -68,3 +69,11 @@ class AccountManager(Service):
 
         def collect(self):
             return notes
+
+    class Events(EventInterface):
+        queue_type = QueuesType.NOT_PERSISTENT
+        if_path = "events"
+
+        @event(path="test-queue")
+        def test_queue(self, arg1, arg2):
+            return "processed"

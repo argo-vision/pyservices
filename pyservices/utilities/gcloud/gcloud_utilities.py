@@ -4,7 +4,8 @@ from .exceptions import GcloudEnvironmentException
 
 
 def check_if_gcloud():
-    return True
+    # TODO: use env
+    return "GOOGLE_CLOUD_PROJECT" in os.environ.keys()
 
 
 def check_gcloud_production():

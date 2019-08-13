@@ -175,9 +175,9 @@ Example usage with a SQLite3 based queue
 
     >>> import persistqueue
     >>> q = persistqueue.SQLiteQueue('mypath', auto_commit=True)
-    >>> q.put('str1')
-    >>> q.put('str2')
-    >>> q.put('str3')
+    >>> q.add_task('str1')
+    >>> q.add_task('str2')
+    >>> q.add_task('str3')
     >>> q.get()
     'str1'
     >>> del q
@@ -202,11 +202,11 @@ This queue does not allow duplicate items.
 
    >>> import persistqueue
    >>> q = persistqueue.UniqueQ('mypath')
-   >>> q.put('str1')
-   >>> q.put('str1')
+   >>> q.add_task('str1')
+   >>> q.add_task('str1')
    >>> q.size
    1
-   >>> q.put('str2')
+   >>> q.add_task('str2')
    >>> q.size
    2
    >>>
@@ -224,7 +224,7 @@ The core functions:
 
    >>> import persisitqueue
    >>> ackq = persistqueue.SQLiteAckQueue('path')
-   >>> ackq.put('str1')
+   >>> ackq.add_task('str1')
    >>> item = ackq.get()
    >>> # Do something with the item
    >>> ackq.ack(item) # If done with the item
@@ -242,9 +242,9 @@ Example usage with a file based queue
 
     >>> from persistqueue import Queue
     >>> q = Queue("mypath")
-    >>> q.put('a')
-    >>> q.put('b')
-    >>> q.put('c')
+    >>> q.add_task('a')
+    >>> q.add_task('b')
+    >>> q.add_task('c')
     >>> q.get()
     'a'
     >>> q.task_done()
@@ -313,7 +313,7 @@ Multi-thread usage for **SQLite3** based queue
          t.start()
 
     for item in source():
-        q.put(item)
+        q.add_task(item)
 
 
 multi-thread usage for **Queue**
@@ -337,7 +337,7 @@ multi-thread usage for **Queue**
          t.start()
 
     for item in source():
-        q.put(item)
+        q.add_task(item)
 
     q.join()       # block until all tasks are done
 
@@ -414,7 +414,7 @@ Caution
 Currently, the atomic operation is supported on Windows while still in experimental,
 That's saying, the data in ``persistqueue.Queue`` could be in unreadable state when an incidental failure occurs during ``Queue.task_done``.
 
-**DO NOT put any critical data on persistqueue.queue on Windows**.
+**DO NOT add_task any critical data on persistqueue.queue on Windows**.
 
 
 Contribution

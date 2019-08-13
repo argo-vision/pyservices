@@ -9,7 +9,7 @@ from pyservices import JSON
 from pyservices.service_descriptors.proxy.proxy_interface import EndPoint
 from pyservices.utils.exceptions import ClientException
 
-# TODO refactor
+# TODO refactor; merge proxies together?
 
 
 def _check_instances(resource, resource_class):

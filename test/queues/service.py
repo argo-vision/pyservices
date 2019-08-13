@@ -1,0 +1,16 @@
+from pyservices.service_descriptors.interfaces import EventInterface, Event
+from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.utilities.queues import QueuesType
+
+
+class Test(Service):
+    service_base_path = 'test'
+    if_path = 'test'  # NOTE: shared with RPC
+
+    class Events(EventInterface):
+        queue_type = QueuesType.NOT_PERSISTENT
+        if_path = "events"
+
+        @Event(path="test-queue")
+        def test_queue(self):
+            return "processed"

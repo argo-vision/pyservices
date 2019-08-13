@@ -2,6 +2,8 @@ import abc
 import itertools
 from functools import wraps
 from collections import defaultdict
+import threading
+from typing import NamedTuple
 
 import falcon
 
@@ -22,6 +24,14 @@ FALCON = 'falcon'
 
 # FIXME document, rename as App in Wrapper?
 # FIXME Falcon generators can be generalized -> interfaces must provide COMMON CLASS FOR CALLSname
+
+# Thread-local allowing request-info access:
+request_info = threading.local()
+
+
+class RequestInfo(NamedTuple):
+    user_agent: str
+
 
 class WSGIAppWrapper(abc.ABC):
     """ Base class for frameworks, it is used to crete WSGI applications.
@@ -107,8 +117,19 @@ class FalconWrapper(WSGIAppWrapper):
                 @wraps(call)
                 def falcon_handler(inner_self, req, res, **kwargs):
                     try:
+                        # Exposing some info:
+                        request_info.info = RequestInfo(
+                            user_agent=req.get_header('user-agent')
+                        )
+
+                        # Executing the call:
                         data = get_data_from_request(call, HTTPRequest(req.stream.read(), req.params), **kwargs)
                         body = call.method(**data)
+
+                        # Not processing anymore:
+                        request_info.info = None
+
+                        # Preparing the response:
                         updated_res: HTTPResponse = get_updated_response(call, body)
                         res.body = updated_res.body
 

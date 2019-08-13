@@ -32,13 +32,17 @@ def register_component(ctx: Context):
 
 Gianluca Scarpellini - gianluca.scarpellini@argo.vision
 """
+from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utils.exceptions import ComponentNotFound
-from pyservices.service_descriptors.layer_supertypes import Service
+
+context = None
 
 
 class Context:
     def __init__(self):
+        global context
+        context = self
         self._state = dict()
         self._startup_functions = []
         self.APP_KEY = "APP"
@@ -81,4 +85,3 @@ class Context:
     def startup(self):
         for function in self._startup_functions:
             function(self)
-

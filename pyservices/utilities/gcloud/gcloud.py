@@ -6,7 +6,6 @@ from .url_composer import DefaultUrlComposer
 from .yaml_parser import YamlParser
 
 
-
 class GcloudCronParser(YamlParser):
     def __init__(self, timers):
         super().__init__("cron.yaml", timers)

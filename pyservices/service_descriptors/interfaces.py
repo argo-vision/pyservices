@@ -1,16 +1,14 @@
 import abc
 import inspect
-import logging
 from enum import Enum
 from functools import wraps
 from typing import NamedTuple
-from functools import wraps
 
 from pyservices import JSON
 from pyservices.data_descriptors.entity_codecs import Codec
 from pyservices.data_descriptors.fields import ComposedField
-import pyservices as ps
-from pyservices.utilities.queues import get_queue
+from pyservices.utilities.gcloud import check_if_gcloud
+
 
 class InterfaceBase(abc.ABC):
     """Base class of interfaces. InterfaceBase subclasses describe interfaces.
@@ -49,6 +47,7 @@ class HTTPInterface(InterfaceBase):
     """Abstract HTTP interface.
 
     """
+
     @abc.abstractmethod
     def _get_http_operations(self):
         """
@@ -58,8 +57,6 @@ class HTTPInterface(InterfaceBase):
             List of InterfaceOperationDescriptor objects.
         """
         pass
-
-
 
     @classmethod
     def _get_interface_path(cls):
@@ -226,6 +223,7 @@ class RestResourceInterface(HTTPInterface):
                 return actual(**kwargs)
             else:
                 raise TypeError
+
         return merged_collect
 
     @staticmethod
@@ -253,7 +251,8 @@ class RPCInterface(HTTPInterface):
     def _get_http_operations(self):
         methods = self._get_instance_calls().values()
         return [InterfaceOperationDescriptor(self, m, m.http_method,
-                                             f'{self._get_endpoint()}/{m.path}')
+                                             f'{self._get_endpoint()}/{m.path}',
+                                             exposition=HttpExposition.MANDATORY)
                 for m in methods]
 
     @classmethod
@@ -286,23 +285,39 @@ def RPC(path=None, method="post"):
 class EventInterface(HTTPInterface):
     """RPC interface used to perform remote procedure calls.
     """
-    queue = None
+    queue_type = None
+    queue_configuration = None
 
     def __init__(self, service):
+        from pyservices.utilities.queues import get_queue
         super().__init__(service)
-        if self.queue is None:
-            self.queue = get_queue()
+        self.queue = get_queue(self.queue_type, self.queue_configuration)
 
-    def get_http_operations(self):
-        """ TODO Actual remote procedure calls (with self etc..) """
-        return {n: Event()(c) for n, c in super().get_call_descriptors().items()}
+    def _get_instance_calls(self):
+        """
+
+        Returns:
+            All public methods of rpc interface. Every method is tagged with RPC descriptor
+         TODO Actual remote procedure calls (with self etc..) """
+        return {n: event()(m) for n, m in super()._get_instance_calls().items()}
+
+    def _get_http_operations(self):
+        def create_descriptor(method):
+            InterfaceOperationDescriptor(
+                interface=self,
+                method=method,
+                http_method=method.http_method,
+                path=f'{self._get_endpoint()}/{method.path}',
+                exposition=check_if_gcloud())
+
+        return [create_descriptor(m)
+                for m in self._get_instance_calls().values()]
 
 
-# TODO this decorator could be generalized for every HTTP call
-def Event(path=None, method="POST"):
+def event(path=None, method="GET"):
     """
     Decorator event (idempotent)
-     TODO: more securiity?
+     TODO: more security?
     """
 
     def my_decorator(func):
@@ -310,11 +325,30 @@ def Event(path=None, method="POST"):
             return func
 
         @wraps(func)
-        def wrapped_rpc_call(*args, **kwargs):
-            return func(*args, **kwargs)
+        def dispatcher(self, *args, **kwargs):
+            def enqueue_message(message):
+                try:
+                    task = self.queue.build_task(self.service, self, func, message)
+                    self.queue.add_task(task)
+                except:
+                    return "nack"
 
-        wrapped_rpc_call.method = method.lower()
-        wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
-        return wrapped_rpc_call
+            def process_message(message):
+                # TODO: Manage security and other "container" stuff (log, audit, ...).
+                func(self, *message.args, **message.kwargs)
+
+            def dispatch_message(message):
+                op = process_message if self.queue.is_processing() else enqueue_message
+                op(message)
+
+            # Dispatching:
+            return dispatch_message({"args": args, "kwargs": kwargs})
+
+        # Some data to add to the operation-descriptor:
+        dispatcher.http_method = method.lower()
+        dispatcher.path = path or func.__name__.replace('_', '-')
+
+        # The decorated call is the dispatcher:
+        return dispatcher
 
     return my_decorator

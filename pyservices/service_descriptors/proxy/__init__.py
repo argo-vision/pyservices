@@ -1,7 +1,8 @@
 from collections import namedtuple
 
-from pyservices.service_descriptors.interfaces import RestResourceInterface, RPCInterface
+from pyservices.service_descriptors.interfaces import RestResourceInterface, RPCInterface, EventInterface
 from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.service_descriptors.proxy.event_proxy import EventDispatcherEndPoint
 from pyservices.service_descriptors.proxy.rest_proxy import RestDispatcherEndPoint
 from pyservices.service_descriptors.proxy.rpc_proxy import RPCDispatcherEndPoint
 from pyservices.utils.exceptions import ServiceException
@@ -31,6 +32,8 @@ def create_service_connector(service, service_location):
             endpoint = RestDispatcherEndPoint(iface, loc)
         elif issubclass(iface, RPCInterface):
             endpoint = RPCDispatcherEndPoint(iface, loc)
+        elif issubclass(iface, EventInterface):
+            endpoint = EventDispatcherEndPoint(iface, loc)
         else:
             raise NotImplementedError
 

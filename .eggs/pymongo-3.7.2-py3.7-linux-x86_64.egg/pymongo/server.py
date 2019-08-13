@@ -54,8 +54,8 @@ class Server(object):
         Reconnect with open().
         """
         if self._publish:
-            self._events.put((self._listener.publish_server_closed,
-                              (self._description.address, self._topology_id)))
+            self._events.add_task((self._listener.publish_server_closed,
+                                   (self._description.address, self._topology_id)))
         self._monitor.close()
         self._pool.reset()
 

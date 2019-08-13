@@ -1,6 +1,8 @@
 import logging
 import threading
 
+from pyservices.service_descriptors.layer_supertypes import ServiceOperationReference
+
 logger = logging.getLogger(__package__)
 
 
@@ -9,14 +11,13 @@ class Puller:
     Simple puller class
     """
 
-    def __init__(self, queue, processor):
+    def __init__(self, queue):
         """
         Create a puller that takes data from the queue and feed the processor.
         :param queue:
         :param processor:
         """
         self._worker = None
-        self._processor = processor
         self._queue = queue
 
     def _work(self):
@@ -26,10 +27,20 @@ class Puller:
         :return:
         """
         while True:
-            val = self._queue.get()
-            if val.data is None:
+            task = self._queue.get()
+            if not self._is_valid_task(task):
                 return
-            self._processor.feed([val])
+            Puller._execute_task(task)
+
+    @staticmethod
+    def _is_valid_task(task):
+        return task.data is not None
+
+    @staticmethod
+    def _execute_task(task):
+        call = ServiceOperationReference(**task.data['reference'])
+        data = task.data['data']
+        call(data)
 
     def start(self):
         """
@@ -47,7 +58,7 @@ class Puller:
         """
         if self._worker is None:
             return
-        self._queue.put(None)
+        self._queue.add_task(None)
         self._worker.join()
         self._worker = None
 
@@ -73,6 +84,8 @@ class GcloudFakeQueuePuller:
         """
         while True:
             request = self._queue.get()
+            if request.data is None:
+                return
             if 'call' not in request.data:
                 return
             if 'url' not in request.data:
@@ -80,7 +93,7 @@ class GcloudFakeQueuePuller:
             call = request.data['call']
             url = request.data['url']
             args = request.data['args']
-            call(url, **args)
+            # call("http://localhost:8080" + url, **args)
 
     def start(self):
         """
@@ -98,6 +111,6 @@ class GcloudFakeQueuePuller:
         """
         if self._worker is None:
             return
-        self._queue.put(None)
+        self._queue.add_task(None)
         self._worker.join()
         self._worker = None
