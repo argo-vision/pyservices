@@ -1,13 +1,13 @@
 import unittest
 
-from pyservices.context.microservice_utils import MicroServiceConfiguration
+from pyservices.context.microservice_utils import MicroserviceConfiguration
 from pyservices.utils.url_composer import DefaultUrlComposer
 from test.context.components.configuration import configurations, get_path
 
 
 class TestUrlComposer(unittest.TestCase):
     def testDefaultUrlComposer(self):
-        msconf = MicroServiceConfiguration(configurations, 'micro-service1')
+        msconf = MicroserviceConfiguration('micro-service1')
         url_composer = DefaultUrlComposer(msconf)
         self.assertEqual(url_composer.get_http_url(get_path('service1')),
                          'http://localhost:1234')

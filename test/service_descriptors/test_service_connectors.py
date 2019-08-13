@@ -10,7 +10,7 @@ from test.service_descriptors.components.service1 import Service1, note_mm
 from test.service_descriptors.components.service2 import Service2
 from test.service_descriptors.components.service3 import Service3
 from test.service_descriptors.service import AccountManager
-from test.service_descriptors.components.configuration import configurations
+
 address = '0.0.0.0'
 port = 8080
 account_manager_port = 8000

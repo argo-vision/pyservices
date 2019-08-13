@@ -7,6 +7,7 @@ from wsgiref import simple_server
 
 import requests
 
+from pyservices.context.microservice_utils import MicroserviceConfiguration
 from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
 from pyservices.service_descriptors.interfaces import InterfaceOperationDescriptor
 from pyservices.service_descriptors.proxy import create_service_connector
@@ -115,6 +116,21 @@ class TestRestServer(unittest.TestCase):
 
 
 class TestRestServerExposition(unittest.TestCase):
+    _old_service_name = os.getenv("GAE_SERVICE")
+    _old_config_dir = MicroserviceConfiguration._config_dir
+    _my_config_path = 'test.service_descriptors.uservices'
+
+    @classmethod
+    def setUpClass(cls):
+        MicroserviceConfiguration._config_dir = cls._my_config_path
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls._old_service_name:
+            os.environ["GAE_SERVICE"] = cls._old_service_name
+        else:
+            os.environ.pop("GAE_SERVICE")
+        MicroserviceConfiguration._config_dir = cls._old_config_dir
 
     def setUp(self):
         self.address = '0.0.0.0'
@@ -170,13 +186,15 @@ class TestRestServerExposition(unittest.TestCase):
             200)
 
     def _put_env_and_start_server(self, env):
-        os.environ.putenv('environment', env)
+        os.environ['environment'] = env
 
+        os.environ["GAE_SERVICE"] = "micro-service1"
         self.app_wrapper1.register_route(self.service1)
+        os.environ["GAE_SERVICE"] = "micro-service3"
         self.app_wrapper3.register_route(self.service3)
         self.httpd1 = simple_server.make_server(self.address,
                                                 self.port1,
-                                               self.app_wrapper1.app)
+                                                self.app_wrapper1.app)
         self.httpd3 = simple_server.make_server(self.address,
                                                 self.port3,
                                                 self.app_wrapper3.app)
@@ -184,6 +202,7 @@ class TestRestServerExposition(unittest.TestCase):
         t.start()
         t = Thread(target=self.httpd3.serve_forever)
         t.start()
+
 
 if __name__ == '__main__':
     unittest.main()

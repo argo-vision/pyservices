@@ -69,7 +69,7 @@ class ServiceNotFound(PyservicesBaseException):
     pass
 
 
-class MicroServiceConfigurationError(PyservicesBaseException):
+class MicroserviceConfigurationError(PyservicesBaseException):
     pass
 
 

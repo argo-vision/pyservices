@@ -20,7 +20,7 @@ class MetaModel:
                  primary_key_name: Optional[str] = None) -> None:
         """ Initialize the meta model.
 
-        Attributes:
+        Args:
             name (str): The name of the class which will be generated. It also
                 define will be a key on the modelClasses.
             fields (Field): The fields used to generate the class
@@ -108,7 +108,7 @@ class MetaModel:
         def new(cls, *args, **kwargs):
             """ Create and return a new instance of the model.
 
-            Attributes:
+            Args:
                 args: A sequence of the values used to initialize the
                     class generated from the MetaModel
                 kwargs: Values used to initialize the class generated form the
@@ -177,7 +177,7 @@ class MetaModel:
         """ This method is used to validate value which identifies the model
                 through the primary key.
 
-        Attributes:
+        Args:
             kwargs: If the keys are more than 1. They must match the name
                 of the fields of the primary key. Values must match the types.
 

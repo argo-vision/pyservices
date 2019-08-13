@@ -1,4 +1,3 @@
-import importlib
 import os
 
 import abc
@@ -10,11 +9,11 @@ import falcon
 
 import pyservices as ps
 from pyservices.context import Context
-from pyservices.context.microservice_utils import MicroServiceConfiguration
+import pyservices.context.microservice_utils as config_utils
 from pyservices.service_descriptors.comunication_utils import HTTPRequest, \
     HTTPResponse, get_data_from_request, get_updated_response
-from pyservices.service_descriptors.interfaces import HTTPInterface,\
-    InterfaceOperationDescriptor
+from pyservices.service_descriptors.interfaces import HTTPInterface, \
+    InterfaceOperationDescriptor, HTTPExposition
 
 COMPONENT_DEPENDENCIES = []
 COMPONENT_KEY = __name__
@@ -55,13 +54,13 @@ class WSGIAppWrapper(abc.ABC):
     def must_expose(op):
         # TODO #38
         env = os.getenv('ENVIRONMENT')
-        if env == 'DEVELOP':
+        if env == 'DEVELOP' or op.exposition == HTTPExposition.MANDATORY:
             return True
-        current_ms = os.getenv('MICROSERVICE')
-        config = importlib.import_module(f'uservices.{current_ms}.py').config
-        config = MicroServiceConfiguration(config, current_ms)
-
-        return config.
+        config = config_utils.current_config()
+        if len(config.get_dependent_remote_services()):
+            return True
+        # HTTPExposition.FORBIDDEN or there are not services which need this:
+        return False
 
 
 class FalconWrapper(WSGIAppWrapper):
@@ -102,7 +101,7 @@ class FalconWrapper(WSGIAppWrapper):
         operations = defaultdict(list)
 
         # Aggregate calls by paths
-        for op in self.get_exposed_operations():
+        for op in self.get_exposed_operations(iface):
             ps.log.error("Creating {} - {}".format(op.path, op.http_method))
             operations[op.path].append(op)
 

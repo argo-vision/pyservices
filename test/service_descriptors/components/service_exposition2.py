@@ -4,8 +4,7 @@ from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import RestResourceInterface, \
     RPCInterface
 
-from pyservices.data_descriptors.fields import StringField
-from test.service_descriptors.components.configuration import get_path
+from ..uservices import get_path
 
 COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper',
                           get_path('service_exposition1')]

@@ -6,14 +6,15 @@ import inspect
 from pyservices.context import Context
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.utils.exceptions import MicroServiceConfigurationError, \
+from pyservices.utils.exceptions import MicroserviceConfigurationError, \
     ServiceDependenciesError
 from pyservices.utils.url_composer import DefaultUrlComposer
+import pyservices.context.microservice_utils as config_utils
 
 
 def microservice_sorted_dependencies(services: list):
     if len(services) == 0:
-        raise MicroServiceConfigurationError("Micro service configuration "
+        raise MicroserviceConfigurationError("Micro service configuration "
                                              "contains no services.")
     deps_graph = functools.reduce(components_graph, services, {})
     if not is_acyclic(deps_graph):
@@ -32,7 +33,7 @@ def get_service_class(module):
     elif dim == 1:
         return services[0]
     else:
-        raise MicroServiceConfigurationError('A component module can contain'
+        raise MicroserviceConfigurationError('A component module can contain'
                                              'at most one service.')
 
 
@@ -80,7 +81,7 @@ def components_graph(graph, component):
                               for d in deps]
         return graph
     except ModuleNotFoundError as e:
-        raise MicroServiceConfigurationError(e.msg)
+        raise MicroserviceConfigurationError(e.msg)
 
 
 def is_acyclic(graph):
@@ -120,14 +121,15 @@ def destructive_dfs(graph: dict, edge: str, visit: list):
 # FIXME move
 def create_application(conf):
     ctx = Context()
-    components = conf.sorted_dependencies()
+    components = microservice_sorted_dependencies(conf)
     url_composer = DefaultUrlComposer(conf)  # TODO this should also support gcloud
     for dep in components:
         m = importlib.import_module(dep)
         service = get_service_class(m)
         if service is not None and dep not in conf.services():
+            ms = config_utils.microservice_name(dep)
             remote_service = create_service_connector(service,
-                                                      url_composer.get_http_url(dep))  # TODO how to select the protocol?
+                                                      url_composer.get_http_url(ms))  # TODO how to select the protocol?
             ctx.register(m.COMPONENT_KEY, remote_service)
         else:
             m.register_component(ctx)
@@ -146,3 +148,29 @@ def _inject_dependencies(services, conf):
                           for m, s in services.items()
                           if m in importlib.import_module(module).COMPONENT_DEPENDENCIES}
             [service.add_connector(bp, c) for bp, c in connectors.items()]
+
+
+def dependent_components(service_microservice):
+        """
+        Args:
+            # TODO hide name of module, use name of service (convention)
+            service_microservice (str): could be the string of the module of the
+            service or the microservice_name
+        Returns:
+           list of components which depends on the microservice
+        """
+        ss = config_utils.services(service_microservice)
+        complete_dep_graph = functools.reduce(components_graph,
+                                              config_utils.all_services(), {})
+        return [edge for edge, adj_list in complete_dep_graph.items()
+                if set(ss) & set(adj_list)]
+
+
+def dependent_remote_services(service_microservice):
+        components = dependent_components(service_microservice)
+        local_graph = functools.reduce(
+            components_graph, config_utils.services(service_microservice), {})
+        
+        return [s for s in services if config_utils.host(s) != local]
+
+def
