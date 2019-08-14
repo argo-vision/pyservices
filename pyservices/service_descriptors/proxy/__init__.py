@@ -22,9 +22,10 @@ def create_service_connector(service, service_location):
 
     for iface in service.interfaces():
         if type(service_location) == str:
-            loc = service_location
+            loc = f'{service_location}/{service.service_base_path}'
         else:
-            descriptor_find = [x for x in service_location.interface_descriptors if isinstance(x, iface)]
+            descriptor_find = [x for x in service_location.interface_descriptors
+                               if isinstance(x, iface)]
             loc = descriptor_find[0]
 
         if issubclass(iface, RestResourceInterface):

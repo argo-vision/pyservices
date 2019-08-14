@@ -100,10 +100,10 @@ def microservice_name(service: str):
     for ms, config in config.items():
         if service in config['services']:
             return ms
-    raise ValueError('Service not present')
+    raise ValueError(f'Service not present: {service}')
 
 
-def remote_dependent_components() -> set:
+def current_dependent_remote_components() -> set:
     """
     Returns:
         The remote components which depends on current_microservice

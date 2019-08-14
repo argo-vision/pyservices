@@ -54,7 +54,7 @@ class WSGIAppWrapper(abc.ABC):
     def must_expose(op):
         # TODO #38
         env = os.getenv('ENVIRONMENT')
-        deps = config_utils.remote_dependent_components()
+        deps = config_utils.current_dependent_remote_components()
         expose_on_deps = deps and op.exposition != HTTPExposition.FORBIDDEN
         if env == 'DEVELOPMENT' or op.exposition == HTTPExposition.MANDATORY \
                 or expose_on_deps:
@@ -102,7 +102,7 @@ class FalconWrapper(WSGIAppWrapper):
 
         # Aggregate calls by paths
         for op in self.get_exposed_operations(iface):
-            ps.log.error("Creating {} - {}".format(op.path, op.http_method))
+            ps.log.debug("Creating {} - {}".format(op.path, op.http_method))
             operations[op.path].append(op)
 
         # Update single resource for path

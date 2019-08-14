@@ -18,11 +18,11 @@ address = '0.0.0.0'
 port = 8080
 account_manager_port = 8000
 port_remote = 8081
-base_path_service1 = f'http://{address}:{port}/{Service1.service_base_path}'
-base_path_service2 = f'http://{address}:{port}/{Service2.service_base_path}'
-base_path_service3 = f'http://{address}:{port_remote}/{Service3.service_base_path}'
+base_path_service1 = f'http://{address}:{port}'
+base_path_service2 = f'http://{address}:{port}'
+base_path_service3 = f'http://{address}:{port_remote}'
 
-account_manager_base_path = f'http://{address}:{account_manager_port}/{AccountManager.service_base_path}'
+account_manager_base_path = f'http://{address}:{account_manager_port}'
 
 
 class ServiceConnectorTest(unittest.TestCase):

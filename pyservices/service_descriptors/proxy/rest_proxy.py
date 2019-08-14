@@ -68,7 +68,8 @@ class RemoteRestRequestCall(RestEndPoint):
         if not _check_instances(data, self.meta_model.get_class()):
             raise ValueError('Expected a {}'.format(self.meta_model.name))
         try:
-            resp = requests.put(self.path(None), data=JSON.encode(data), timeout=5)
+            # resp = requests.put(self.path(None), data=JSON.encode(data), timeout=5) TODO
+            resp = requests.put(self.path(None), data=JSON.encode(data))
         except Exception:
             raise ClientException('Exception on request')
 

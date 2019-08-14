@@ -2,7 +2,8 @@ import os
 import unittest
 
 import pyservices.context.microservice_utils as config_utils
-from pyservices.context.dependencies import dependent_remote_components, dependent_components, \
+from pyservices.context.dependencies import dependent_remote_components, \
+    dependent_components, \
     microservice_sorted_dependencies, topological_sort, is_acyclic, components_graph, create_application
 from pyservices.utils.exceptions import MicroserviceConfigurationError, ServiceDependenciesError
 from test.context.uservices import get_path

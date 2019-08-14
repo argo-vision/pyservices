@@ -69,9 +69,9 @@ def components_graph(graph, component):
         graph.update({module.COMPONENT_KEY: missing_nodes.copy()})
         while len(missing_nodes):
             next_module = importlib.import_module(missing_nodes.pop())
-            service = get_service_class(next_module)
+            service = get_service_class(f'services.{next_module}')  # TODO 39
             key = next_module.COMPONENT_KEY
-            if service is not None and issubclass(service, Service):
+            if service:
                 # No dependencies for a remote service
                 graph[key] = []
                 continue
@@ -141,6 +141,7 @@ def create_application():
     return ctx.get_app()
 
 
+# TODO not working
 def _inject_dependencies(services, conf):
     remotes = {m: conf.host_of(s.__module__) if m not in conf.services() else 'local'
                for m, s in services.items()}
