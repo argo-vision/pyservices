@@ -134,6 +134,7 @@ class FalconWrapper(WSGIAppWrapper):
                         res.body = updated_res.body
 
                     except Exception as e:  # TODO be more precise, exception translations #23
+                        ps.log.debug(e)
                         res.status = falcon.HTTP_500
 
                 return falcon_handler

@@ -57,7 +57,7 @@ class AccountManager(Service):
 
         def add(self, resource):
             res_id = '123'
-            assert type(resource) is Account
+            assert isinstance(resource, (Account, list))
             return res_id
 
         def update(self, res_id, resource):

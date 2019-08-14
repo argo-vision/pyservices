@@ -87,6 +87,15 @@ class TestRestServer(unittest.TestCase):
         # self.assertEqual(resp.status_code, 201) # FIXME actual test, fix in #23
         self.assertEqual(resp.status_code, 200)
 
+    def testHTTPAddResources(self):
+        str_account = '[{"email" : "new@email.com","username" : "new account",' \
+                      ' "friends_number": 1234},{"email" : "new@email.com","username" : "new account",' \
+                      ' "friends_number": 1234}]'
+        resp = requests.put(base_path + '/account-interface/',
+                            str_account.encode())
+        # self.assertEqual(resp.status_code, 201) # FIXME actual test, fix in #23
+        self.assertEqual(resp.status_code, 200)
+
     def testHTTPUpdateResource(self):
         str_account = '{"email" : "ed@email.com","username" : "edited account' \
                       '", "friends_number": 231}'
