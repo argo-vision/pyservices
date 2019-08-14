@@ -16,7 +16,7 @@ def create_service_connector(service, service_location):
                 Can be "local"
         """
     if not issubclass(service, Service):
-        raise ServiceException(f'The service class is not a sublcass of  {Service} ')
+        raise ServiceException(f'The service class is not a subclass of {Service} ')
 
     interfaces_endpoints = {}
 

@@ -7,27 +7,48 @@ from wsgiref import simple_server
 
 import requests
 
+from pyservices.context.dependencies import create_application
 from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
 import pyservices.context.microservice_utils as config_utils
 from pyservices.service_descriptors.proxy import create_service_connector
-from test.data_descriptors.meta_models import *
 from test.service_descriptors.components.service_exposition1 import ServiceEx1
 from test.service_descriptors.components.service_exposition3 import ServiceEx3
-from test.service_descriptors.service import AccountManager
+from test.service_descriptors.components.account_manager import AccountManager
+from test.service_descriptors.uservices.account_manager_ms import config
 
-address = '0.0.0.0'
-port = 8080
+address = config['address']
+port = config['port']
+
 base_path = f'http://{address}:{port}/{AccountManager.service_base_path}'
 
 
 class TestRestServer(unittest.TestCase):
+    _old_service_name = os.getenv("GAE_SERVICE")
+    _old_environment = os.getenv("ENVIRONMENT")
+    _old_config_dir = config_utils._config_dir
+    _my_config_path = 'test.service_descriptors.uservices'
+
+    @classmethod
+    def setUpClass(cls):
+        config_utils._config_dir = cls._my_config_path
+        os.environ['GAE_SERVICE'] = 'account_manager_ms'
+        os.environ['ENVIRONMENT'] = 'DEVELOPMENT'
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls._old_service_name:
+            os.environ["GAE_SERVICE"] = cls._old_service_name
+        else:
+            os.environ.pop("GAE_SERVICE")
+        if cls._old_environment:
+            os.environ["ENVIRONMENT"] = cls._old_environment
+        else:
+            os.environ.pop("ENVIRONMENT")
+        config_utils._config_dir = cls._old_config_dir
 
     def setUp(self):
-        service = AccountManager()
-
-        app_wrapper = FalconWrapper()  # TODO the only WSGI framework implemented
-        app_wrapper.register_route(service)
-        self.httpd = simple_server.make_server(address, port, app_wrapper.app)
+        app = create_application()
+        self.httpd = simple_server.make_server(address, port, app.app)
         t = Thread(target=self.httpd.serve_forever)
         t.start()
 
@@ -65,6 +86,7 @@ class TestRestServer(unittest.TestCase):
                             str_account.encode())
         # self.assertEqual(resp.status_code, 201) # FIXME actual test, fix in #23
         self.assertEqual(resp.status_code, 200)
+
     def testHTTPUpdateResource(self):
         str_account = '{"email" : "ed@email.com","username" : "edited account' \
                       '", "friends_number": 231}'
@@ -185,7 +207,7 @@ class TestRestServerExposition(unittest.TestCase):
             200)
 
     def _put_env_and_start_server(self, env):
-        os.environ['environment'] = env
+        os.environ['ENVIRONMENT'] = env
 
         os.environ["GAE_SERVICE"] = "micro-service1"
         self.app_wrapper1.register_route(self.service1)

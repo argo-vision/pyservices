@@ -1,7 +1,11 @@
+from pyservices.context import Context
 from pyservices.service_descriptors.interfaces import RPC, \
     RestResourceInterface, RPCInterface
 from pyservices.service_descriptors.layer_supertypes import Service
 from test.data_descriptors.meta_models import *
+
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper']
+COMPONENT_KEY = __name__
 
 
 class AccountManager(Service):
@@ -68,3 +72,10 @@ class AccountManager(Service):
 
         def collect(self):
             return notes
+
+
+def register_component(ctx: Context):
+    service = AccountManager()
+    ctx.register(COMPONENT_KEY, service)
+    app = ctx.get_app()
+    app.register_route(service)

@@ -10,7 +10,9 @@ from test.data_descriptors.meta_models import *
 from test.service_descriptors.components.service1 import Service1, note_mm
 from test.service_descriptors.components.service2 import Service2
 from test.service_descriptors.components.service3 import Service3
-from test.service_descriptors.service import AccountManager
+from test.service_descriptors.components.account_manager import AccountManager
+import pyservices.context.microservice_utils as config_utils
+
 
 address = '0.0.0.0'
 port = 8080
@@ -25,10 +27,15 @@ account_manager_base_path = f'http://{address}:{account_manager_port}/{AccountMa
 
 class ServiceConnectorTest(unittest.TestCase):
     _old_service_name = os.getenv("GAE_SERVICE")
+    _old_environment = os.getenv("ENVIRONMENT")
+    _old_config_dir = config_utils._config_dir
+    _my_config_path = 'test.service_descriptors.uservices'
 
     @classmethod
     def setUpClass(cls):
+        config_utils._config_dir = cls._my_config_path
         os.environ["GAE_SERVICE"] = "micro-service1"
+        os.environ['ENVIRONMENT'] = 'DEVELOPMENT'
 
     @classmethod
     def tearDownClass(cls):
@@ -36,6 +43,11 @@ class ServiceConnectorTest(unittest.TestCase):
             os.environ["GAE_SERVICE"] = cls._old_service_name
         else:
             os.environ.pop("GAE_SERVICE")
+        if cls._old_environment:
+            os.environ["ENVIRONMENT"] = cls._old_environment
+        else:
+            os.environ.pop("ENVIRONMENT")
+        config_utils._config_dir = cls._old_config_dir
 
     def setUp(self):
         service = AccountManager()

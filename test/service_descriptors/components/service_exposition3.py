@@ -5,8 +5,10 @@ from pyservices.service_descriptors.interfaces import RestResourceInterface, \
     RPCInterface, RPC, HTTPExposition
 
 from pyservices.data_descriptors.fields import StringField
+from test.service_descriptors.uservices import get_path
 
-COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper']
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper',
+                          get_path('service_exposition1')]
 COMPONENT_KEY = __name__
 
 

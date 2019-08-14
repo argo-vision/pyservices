@@ -109,4 +109,4 @@ def remote_dependent_components() -> set:
         The remote components which depends on current_microservice
     """
     ms = current_microservice()
-    dependent_remote_components(ms)
+    return dependent_remote_components(ms)

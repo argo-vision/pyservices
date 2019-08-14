@@ -55,7 +55,9 @@ class WSGIAppWrapper(abc.ABC):
         # TODO #38
         env = os.getenv('ENVIRONMENT')
         deps = config_utils.remote_dependent_components()
-        if env == 'DEVELOPMENT' or op.exposition == HTTPExposition.MANDATORY or deps:
+        expose_on_deps = deps and op.exposition != HTTPExposition.FORBIDDEN
+        if env == 'DEVELOPMENT' or op.exposition == HTTPExposition.MANDATORY \
+                or expose_on_deps:
             return True
         # HTTPExposition.FORBIDDEN or there are not services which need this:
         return False

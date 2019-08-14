@@ -6,8 +6,7 @@ from pyservices.service_descriptors.interfaces import RestResourceInterface, \
 
 from ..uservices import get_path
 
-COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper',
-                          get_path('service_exposition1')]
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper']
 COMPONENT_KEY = __name__
 
 
