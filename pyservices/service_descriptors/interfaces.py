@@ -8,6 +8,7 @@ from typing import NamedTuple
 from pyservices import JSON
 from pyservices.data_descriptors.entity_codecs import Codec
 from pyservices.data_descriptors.fields import ComposedField
+from pyservices.utils.exceptions import InterfaceDefinitionException
 
 logger = logging.getLogger(__package__)
 
@@ -29,7 +30,8 @@ class InterfaceBase(abc.ABC):
 
     @staticmethod
     def _get_calls(it, typecheck):
-        return {method[0]: method[1] for method in inspect.getmembers(
+        return {method[0]:
+                    HTTP_op()(method[1]) for method in inspect.getmembers(
             it, lambda m: typecheck(m))
                 if not method[0].startswith('_')}
 
@@ -186,6 +188,12 @@ class RestResourceInterface(HTTPInterface):
         collects = methods.get('collect')
         if collects:
             collect = RestResourceInterface._get_merged_collect(collects)
+            collect_exposition = {c.exposition for c in collects}
+            if len(collect_exposition) > 1:
+                raise InterfaceDefinitionException('Multiple expositions for '
+                                                   'all the collects is not '
+                                                   'supported.')
+            setattr(collect, 'exposition', collect_exposition.pop())
             methods['collect'] = collect
 
         id_path = RestResourceInterface._get_meta_model_id_placeholder_path(self.meta_model)
@@ -208,7 +216,8 @@ class RestResourceInterface(HTTPInterface):
         codec = self.codec
         if m:
             return InterfaceOperationDescriptor(self, m, http_method, base_path,
-                                                codec, codec)
+                                                codec, codec,
+                                                exposition=m.exposition)
 
     @staticmethod
     def _get_merged_collect(collects):
@@ -263,8 +272,8 @@ class RPCInterface(HTTPInterface):
         return {n: RPC()(c) for n, c in super()._get_class_calls().items()}
 
 
-def RPC(path=None, method="post",
-        exposition: HTTPExposition = HTTPExposition.ON_DEPENDENCY):
+# TODO remove exposition (done in HTTP)
+def RPC(path=None, method="post"):
     """
     Decorator remote procedure calls (idempotent)
      TODO
@@ -280,7 +289,26 @@ def RPC(path=None, method="post",
 
         wrapped_rpc_call.http_method = method.lower()
         wrapped_rpc_call.path = path or func.__name__.replace('_', '-')
-        wrapped_rpc_call.exposition = exposition
         return wrapped_rpc_call
+
+    return my_decorator
+
+
+def HTTP_op(exposition: HTTPExposition = HTTPExposition.ON_DEPENDENCY):
+    """
+    Decorator for every HTTP operation
+    Args:
+        exposition (HTTPExposition): The exposition of the call
+    """
+
+    def my_decorator(func):
+        if hasattr(func, 'exposition'):
+            return func
+
+        @wraps(func)
+        def http_operation(*args, **kwargs):
+            return func(*args, **kwargs)
+        http_operation.exposition = exposition
+        return http_operation
 
     return my_decorator

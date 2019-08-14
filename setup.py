@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='pyservices',
-    version='0.0.4',
+    version='0.0.5',
     author="Alberto Fanton",
     author_email="alberto.fanton@argo.vision",
     description="Pyservices",

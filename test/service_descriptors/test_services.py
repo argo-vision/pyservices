@@ -180,10 +180,8 @@ class TestRestServerExposition(unittest.TestCase):
 
     def testSelectiveExpositionProductionForbidden(self):
         self._put_env_and_start_server('PRODUCTION')
-        self.assertEqual(
-            requests.post(
-                f'{self.base_path1}/expo/my-forbidden-op').status_code,
-            404)
+        self.assertEqual(404, requests.post(
+            f'{self.base_path1}/expo/my-forbidden-op').status_code)
 
     def testSelectiveExpositionProductionMandatory(self):
         self._put_env_and_start_server('PRODUCTION')
@@ -205,6 +203,13 @@ class TestRestServerExposition(unittest.TestCase):
             requests.post(
                 f'{self.base_path1}/expo/my-dep-op').status_code,
             200)
+
+    def test_exposition_with_decorator(self):
+        self._put_env_and_start_server('PRODUCTION')
+        self.assertEqual(200, requests.get(
+            f'{self.base_path1}/books/123').status_code)
+        self.assertEqual(405, requests.get(
+            f'{self.base_path1}/books').status_code)
 
     def _put_env_and_start_server(self, env):
         os.environ['ENVIRONMENT'] = env

@@ -2,7 +2,7 @@ from pyservices.context import Context
 from pyservices.data_descriptors.meta_model import MetaModel
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.service_descriptors.interfaces import RestResourceInterface, \
-    RPCInterface, RPC, HTTPExposition
+    RPCInterface, RPC, HTTPExposition, HTTP_op
 
 from pyservices.data_descriptors.fields import StringField
 from test.service_descriptors.uservices import get_path
@@ -21,7 +21,7 @@ class ServiceEx3(Service):
         def my_op(self):
             return True
 
-        @RPC(exposition=HTTPExposition.MANDATORY)
+        @HTTP_op(exposition=HTTPExposition.MANDATORY)
         def my_mandatory_op(self):
             return True
 
