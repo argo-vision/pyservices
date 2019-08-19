@@ -53,9 +53,10 @@ class ServiceOperationReference:
 
     def get_interface(self, interface_name):
         for s in self.service:
-            instance = s._request_handler.instance  # FIXME: this will change
-            if instance.__class__.__name__.lower() == interface_name.lower():
-                return instance
+            if hasattr(s._request_handler, 'instance'):
+                instance = s._request_handler.instance  # FIXME: this will change
+                if instance.__class__.__name__.lower() == interface_name.lower():
+                    return instance
         raise Exception()
 
     def get_method(self, method_name):

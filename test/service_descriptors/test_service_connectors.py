@@ -1,48 +1,54 @@
+import os
 import unittest
 from threading import Thread
 from unittest.mock import Mock
 from wsgiref import simple_server
 
-from pyservices.utils import queues
-
+import pyservices.context.microservice_utils as config_utils
 from pyservices.context import context
-from pyservices.service_descriptors.frameworks import FalconWrapper
+from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
 from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.utils.queues import Queue
+from pyservices.utils import queues
 from pyservices.utils.exceptions import ClientException
+from pyservices.utils.queues import Queue
 from test.data_descriptors.meta_models import *
+from test.service_descriptors.components.account_manager import AccountManager
 from test.service_descriptors.components.service1 import Service1, note_mm
-from test.service_descriptors.components.service2 import Service2
-from test.service_descriptors.components.service3 import Service3
-from test.service_descriptors.service import AccountManager
 
 address = '0.0.0.0'
 port = 8080
 account_manager_port = 8000
 port_remote = 8081
-base_path_service1 = f'http://{address}:{port}/{Service1.service_base_path}'
-base_path_service2 = f'http://{address}:{port}/{Service2.service_base_path}'
-base_path_service3 = f'http://{address}:{port_remote}/{Service3.service_base_path}'
+base_path_service1 = f'http://{address}:{port}'
+base_path_service2 = f'http://{address}:{port}'
+base_path_service3 = f'http://{address}:{port_remote}'
 
-account_manager_base_path = f'http://{address}:{account_manager_port}/{AccountManager.service_base_path}'
-
-
-def get_path(comp_name):
-    path = 'test.service_descriptors.components'
-    return f'{path}.{comp_name}'
-
-
-configurations = {
-    'micro-service1': {
-        'services': [get_path('service1'), get_path('service2')]
-    },
-    'micro-service2': {
-        'services': [get_path('service3')]
-    }
-}
+account_manager_base_path = f'http://{address}:{account_manager_port}'
 
 
 class ServiceConnectorTest(unittest.TestCase):
+    _old_service_name = os.getenv("GAE_SERVICE")
+    _old_environment = os.getenv("ENVIRONMENT")
+    _old_config_dir = config_utils._config_dir
+    _my_config_path = 'test.service_descriptors.uservices'
+
+    @classmethod
+    def setUpClass(cls):
+        config_utils._config_dir = cls._my_config_path
+        os.environ["GAE_SERVICE"] = "micro-service1"
+        os.environ['ENVIRONMENT'] = 'DEVELOPMENT'
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls._old_service_name:
+            os.environ["GAE_SERVICE"] = cls._old_service_name
+        else:
+            os.environ.pop("GAE_SERVICE")
+        if cls._old_environment:
+            os.environ["ENVIRONMENT"] = cls._old_environment
+        else:
+            os.environ.pop("ENVIRONMENT")
+        config_utils._config_dir = cls._old_config_dir
 
     def setUp(self):
         queues.get_queue = Mock()

@@ -30,7 +30,9 @@ class Puller:
             task = self._queue.get()
             if not self._is_valid_task(task):
                 return
+            self._queue.set_to_processing()
             Puller._execute_task(task)
+            self._queue.set_to_not_processing()
 
     @staticmethod
     def _is_valid_task(task):

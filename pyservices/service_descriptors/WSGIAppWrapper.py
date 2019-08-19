@@ -1,3 +1,5 @@
+import os
+
 import abc
 import itertools
 from functools import wraps
@@ -9,10 +11,11 @@ import falcon
 
 import pyservices as ps
 from pyservices.context import Context
-from pyservices.service_descriptors.comunication_utils import HTTPRequest, HTTPResponse, \
-    get_data_from_request, get_updated_response
-from pyservices.service_descriptors.interfaces import RestResourceInterface, \
-    RPCInterface, HTTPInterface, InterfaceOperationDescriptor
+import pyservices.context.microservice_utils as config_utils
+from pyservices.service_descriptors.comunication_utils import HTTPRequest, \
+    HTTPResponse, get_data_from_request, get_updated_response
+from pyservices.service_descriptors.interfaces import HTTPInterface, \
+    InterfaceOperationDescriptor, HTTPExposition
 
 COMPONENT_DEPENDENCIES = []
 COMPONENT_KEY = __name__
@@ -50,6 +53,24 @@ class WSGIAppWrapper(abc.ABC):
         return [iface_desc
                 for iface_desc in service.interface_descriptors
                 if issubclass(iface_desc.__class__, HTTPInterface)]
+
+    @staticmethod
+    def get_exposed_operations(iface):
+        return [x
+                for x in iface._get_http_operations()
+                if WSGIAppWrapper.must_expose(x)]
+
+    @staticmethod
+    def must_expose(op):
+        # TODO #38
+        env = os.getenv('ENVIRONMENT')
+        deps = config_utils.current_dependent_remote_components()
+        expose_on_deps = deps and op.exposition != HTTPExposition.FORBIDDEN
+        if env == 'DEVELOPMENT' or op.exposition == HTTPExposition.MANDATORY \
+                or expose_on_deps:
+            return True
+        # HTTPExposition.FORBIDDEN or there are not services which need this:
+        return False
 
 
 class FalconWrapper(WSGIAppWrapper):
@@ -90,8 +111,8 @@ class FalconWrapper(WSGIAppWrapper):
         operations = defaultdict(list)
 
         # Aggregate calls by paths
-        for op in iface._get_http_operations():
-            ps.log.error("Creating {} - {}".format(op.path, op.http_method))
+        for op in self.get_exposed_operations(iface):
+            ps.log.debug("Creating {} - {}".format(op.path, op.http_method))
             operations[op.path].append(op)
 
         # Update single resource for path
@@ -134,6 +155,7 @@ class FalconWrapper(WSGIAppWrapper):
                         res.body = updated_res.body
 
                     except Exception as e:  # TODO be more precise, exception translations #23
+                        ps.log.debug(e)
                         res.status = falcon.HTTP_500
 
                 return falcon_handler

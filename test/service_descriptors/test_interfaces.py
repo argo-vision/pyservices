@@ -1,14 +1,27 @@
+import os
 import unittest
-
 from unittest.mock import Mock
 
 from pyservices.service_descriptors.interfaces import \
     InterfaceOperationDescriptor
+from test.service_descriptors.components.raw_interfaces import TestEventInterface
 from test.service_descriptors.components.raw_interfaces import TestRPCInterface, \
-    TestRestInterface, TestEventInterface
+    TestRestInterface
 
 
 class ServiceConnectorTest(unittest.TestCase):
+    _old_service_name = os.getenv("GAE_SERVICE")
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ["GAE_SERVICE"] = "MICROService1"
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls._old_service_name:
+            os.environ["GAE_SERVICE"] = cls._old_service_name
+        else:
+            os.environ.pop("GAE_SERVICE")
 
     def testRestInterfaceHttpOperations(self):
         service = Mock()

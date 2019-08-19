@@ -76,7 +76,7 @@ class Context:
     def get_component(self, key):
         try:
             return self._state[key]
-        except Exception:
+        except KeyError:
             raise ComponentNotFound('Cannot find {}'.format(key))
 
     def get_services(self):

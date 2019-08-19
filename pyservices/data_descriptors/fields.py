@@ -22,7 +22,7 @@ class Field(abc.ABC):
                  default: Union[_T, Callable[..., _T], None] = None) -> None:
         """ Initialize the field.
 
-        Attributes:
+        Args:
             name (str): The name of the field. The first letter of the name must
                 be in lowercase. The capitalized name may indicate the
                 field_type of the field.
@@ -54,7 +54,7 @@ class Field(abc.ABC):
         If the field_type is not a builtin, it may be necessary to perform
             some operations to value.
 
-        Attributes:
+        Args:
             value: The value used to initialize the model.
             strict (bool): Flag used to perform a strict initialization.
 
@@ -93,7 +93,7 @@ class SimpleField(Field):
     def init_value(self, value, strict: bool = True):
         """ Initialize a SimpleField.
 
-        Attributes:
+        Args:
             value: The value used to initialize the data.
             strict (bool): Used tu perform a strict initialization.
                 If False, some type conversions based on the static_field_type
@@ -168,7 +168,7 @@ class ComposedField(Field):
                  meta_model: MetaModel = None) -> None:
         """ Initialize the ComposedField.
 
-        Attributes:
+        Args:
             *args (Field); The fields which compose the
                 ComposedField
             meta_model (type): The related MetaModel. If passed, the composed
@@ -221,7 +221,7 @@ class ListField(Field):
                  default: Union[list, Callable[..., list], None] = None
                  ) -> None:
         """ Initialize the ListField
-        Attributes:
+        Args:
             data_type (Union[SimpleField.__class__, MetaModel]): An object used
                 to discover the type of the data represented by this ListField.
         """
@@ -276,7 +276,7 @@ class ConditionalField(Field):
         The field_type is set to None and it will be dynamically evaluated when
             a new model is initialized.
 
-        Attributes:
+        Args:
             meta_models (Mapping[str, MetaModel]): The dict containing the
                 relations between field values and MetaModels.
             evaluation_field_name (str): The str which indicated the title of
@@ -291,7 +291,7 @@ class ConditionalField(Field):
         """I have to type check the value at when the new model is being
             created.
 
-        Attributes:
+        Args:
             value (tuple): the first element must contain the value,
                 the second element must contain the MetaModel identified(str)
 

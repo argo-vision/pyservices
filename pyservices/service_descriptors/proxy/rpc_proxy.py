@@ -41,7 +41,7 @@ class RemoteRPCRequestCall:
         if resp is None:
             raise ClientException("Response is empty")
         if not str(resp.status_code).startswith('2'):
-            raise ClientException("Not a 2xx")
+            raise ClientException("Not a 2xx from " + resp.url)
 
 
 class LocalRPCRequestCall:

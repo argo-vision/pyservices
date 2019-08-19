@@ -16,7 +16,7 @@ from pyservices.data_descriptors.fields import SimpleField
 def instance_attributes(inst):
     """Given an instance, lists the name of all public non-callable members.
 
-    Attributes:
+    Args:
         inst (obj):  The instance of the object.
     """
     return [n for n in dir(inst)
@@ -27,7 +27,7 @@ def instance_attributes(inst):
 def instance_callable_objects(inst):
     """Given an instance, lists the public callable members.
 
-    Attributes:
+    Args:
         inst (obj):  The instance of the object.
     """
     return [getattr(inst, n) for n in dir(inst)
@@ -38,7 +38,7 @@ def instance_callable_objects(inst):
 def instance_to_dict_repr(val: object):
     """Recursively generates a dict (or a list of dict).
 
-    Attributes:
+    Args:
         val (object):  The instance of the object. TODO supports not only obj
     """
 
@@ -59,7 +59,7 @@ def instance_to_dict_repr(val: object):
 def dict_repr_to_instance(val: Union[dict, list], meta_model: MetaModel):
     """Recursively recreates an instance given the MetaModel.
 
-    Attributes:
+    Args:
         val (Union[dict, list]): The representation of the data in a dict form..
         meta_model (MetaModel): The MetaModel used to instantiate the object.
     """

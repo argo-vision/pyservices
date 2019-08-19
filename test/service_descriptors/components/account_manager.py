@@ -1,8 +1,12 @@
+from pyservices.context import Context
 from pyservices.service_descriptors.interfaces import RPC, \
     RestResourceInterface, RPCInterface, EventInterface, event
 from pyservices.service_descriptors.layer_supertypes import Service
 from pyservices.utils.queues import QueuesType
 from test.data_descriptors.meta_models import *
+
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper']
+COMPONENT_KEY = __name__
 
 
 class AccountManager(Service):
@@ -54,7 +58,7 @@ class AccountManager(Service):
 
         def add(self, resource):
             res_id = '123'
-            assert type(resource) is Account
+            assert isinstance(resource, (Account, list))
             return res_id
 
         def update(self, res_id, resource):
@@ -77,3 +81,10 @@ class AccountManager(Service):
         @event(path="test-queue")
         def test_queue(self, arg1, arg2):
             return "processed"
+
+
+def register_component(ctx: Context):
+    service = AccountManager()
+    ctx.register(COMPONENT_KEY, service)
+    app = ctx.get_app()
+    app.register_route(service)

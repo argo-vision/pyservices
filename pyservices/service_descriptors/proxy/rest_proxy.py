@@ -28,7 +28,7 @@ def _check_message_status(resp):
     if resp is None:
         raise ClientException("Response is empty")
     if not str(resp.status_code).startswith('2'):
-        raise ClientException("Not a 2xx")
+        raise ClientException("Not a 2xx from " + resp.url)
 
 
 class RestEndPoint(EndPoint):
@@ -74,7 +74,10 @@ class RemoteRestRequestCall(RestEndPoint):
 
         _check_message_status(resp)
         pk_name = self.meta_model.primary_key_field.name
-        return getattr(data, pk_name)
+        if isinstance(data, list):
+            return [getattr(d, pk_name) for d in data]
+        else:
+            return getattr(data, pk_name)
 
     def delete(self, res_id):
         if isinstance(res_id, dict):

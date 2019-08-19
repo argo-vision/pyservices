@@ -129,6 +129,7 @@ class Queue(BaseQueue):
     def __init__(self):
         (self._sx, self._rx) = Pipe()
         self._puller = None
+        self._processing = False
 
     @staticmethod
     def initialize_and_run(_configuration):
@@ -168,8 +169,14 @@ class Queue(BaseQueue):
         # FIXME: FIXME: FIXME: this is really bad too
         return self.Message(data, self)
 
+    def set_to_processing(self):
+        self._processing = True
+
+    def set_to_not_processing(self):
+        self._processing = False
+
     def is_processing(self):
-        return False
+        return self._processing
 
 
 class GcloudTaskQueue(BaseQueue):

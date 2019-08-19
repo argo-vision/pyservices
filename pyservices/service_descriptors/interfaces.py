@@ -1,5 +1,6 @@
 import abc
 import inspect
+import logging
 from enum import Enum
 from functools import wraps
 from typing import NamedTuple
@@ -7,7 +8,9 @@ from typing import NamedTuple
 from pyservices import JSON
 from pyservices.data_descriptors.entity_codecs import Codec
 from pyservices.data_descriptors.fields import ComposedField
-from pyservices.utils.gcloud import check_if_gcloud
+from pyservices.utils.exceptions import InterfaceDefinitionException
+
+logger = logging.getLogger(__package__)
 
 
 class InterfaceBase(abc.ABC):
@@ -27,7 +30,8 @@ class InterfaceBase(abc.ABC):
 
     @staticmethod
     def _get_calls(it, typecheck):
-        return {method[0]: method[1] for method in inspect.getmembers(
+        return {method[0]:
+                    HTTP_op()(method[1]) for method in inspect.getmembers(
             it, lambda m: typecheck(m))
                 if not method[0].startswith('_')}
 
@@ -66,7 +70,7 @@ class HTTPInterface(InterfaceBase):
         return f'/{self.service.service_base_path}/{self._get_interface_path()}'
 
 
-class HttpExposition(Enum):
+class HTTPExposition(Enum):
     """
     Exposition choices for an operation.
     NOTE: Expose all operations in development (also the forbidden ones).
@@ -86,7 +90,7 @@ class InterfaceOperationDescriptor(NamedTuple):
     path: str = ""
     encoder: Codec = JSON
     decoder: Codec = JSON
-    exposition: HttpExposition = HttpExposition.ON_DEPENDENCY
+    exposition: HTTPExposition = HTTPExposition.ON_DEPENDENCY
 
 
 class RestResourceInterface(HTTPInterface):
@@ -183,6 +187,12 @@ class RestResourceInterface(HTTPInterface):
         collects = methods.get('collect')
         if collects:
             collect = RestResourceInterface._get_merged_collect(collects)
+            collect_exposition = {c.exposition for c in collects}
+            if len(collect_exposition) > 1:
+                raise InterfaceDefinitionException('Multiple expositions for '
+                                                   'all the collects is not '
+                                                   'supported.')
+            setattr(collect, 'exposition', collect_exposition.pop())
             methods['collect'] = collect
 
         id_path = RestResourceInterface._get_meta_model_id_placeholder_path(self.meta_model)
@@ -205,7 +215,8 @@ class RestResourceInterface(HTTPInterface):
         codec = self.codec
         if m:
             return InterfaceOperationDescriptor(self, m, http_method, base_path,
-                                                codec, codec)
+                                                codec, codec,
+                                                exposition=m.exposition)
 
     @staticmethod
     def _get_merged_collect(collects):
@@ -252,7 +263,7 @@ class RPCInterface(HTTPInterface):
         methods = self._get_instance_calls().values()
         return [InterfaceOperationDescriptor(self, m, m.http_method,
                                              f'{self._get_endpoint()}/{m.path}',
-                                             exposition=HttpExposition.MANDATORY)
+                                             exposition=m.exposition)
                 for m in methods]
 
     @classmethod
@@ -307,8 +318,8 @@ class EventInterface(HTTPInterface):
                 interface=self,
                 method=method,
                 http_method=method.http_method,
-                path=f'{self._get_endpoint()}/{method.path}',
-                exposition=check_if_gcloud())
+                path=f'{self._get_endpoint()}/{method.path}')
+        # TODO: exposition must be gcloud dependent
 
         return [create_descriptor(m)
                 for m in self._get_instance_calls().values()]
@@ -350,5 +361,25 @@ def event(path=None, method="GET"):
 
         # The decorated call is the dispatcher:
         return dispatcher
+
+    return my_decorator
+
+
+def HTTP_op(exposition: HTTPExposition = HTTPExposition.ON_DEPENDENCY):
+    """
+    Decorator for every HTTP operation
+    Args:
+        exposition (HTTPExposition): The exposition of the call
+    """
+
+    def my_decorator(func):
+        if hasattr(func, 'exposition'):
+            return func
+
+        @wraps(func)
+        def http_operation(*args, **kwargs):
+            return func(*args, **kwargs)
+        http_operation.exposition = exposition
+        return http_operation
 
     return my_decorator

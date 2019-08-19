@@ -6,7 +6,7 @@ from pyservices.service_descriptors.interfaces import RestResourceInterface, \
 
 from pyservices.data_descriptors.fields import StringField
 
-COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.frameworks']
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper']
 COMPONENT_KEY = __name__
 
 note_mm = MetaModel('MyNote', StringField('title'), StringField('content'),
