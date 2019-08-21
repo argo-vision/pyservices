@@ -26,7 +26,7 @@ def get_project_id():
 
 
 def get_location_id():
-    return "west_1"
+    return "europe-west1"
 
 
 def get_service_id():
@@ -35,6 +35,11 @@ def get_service_id():
         return project.lower()
     except Exception:
         raise GcloudEnvironmentException()
+
+
+def get_queue_id():
+    service: str = get_service_id()
+    return f'queue-{service}'
 
 
 def setup_logging():

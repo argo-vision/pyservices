@@ -73,7 +73,13 @@ class ServiceConnectorTest(unittest.TestCase):
         s = Service1()
         connector = create_service_connector(Service1, s)
         note = connector.mynotes.detail(123)
-        self.assertTrue(isinstance(note, note_mm.get_class()))
+        self.assertIsInstance(note, note_mm.get_class())
+
+        notes = connector.mynotes.collect()
+
+        self.assertIsInstance(notes, list)
+        self.assertEqual(notes[0], note)
+
         content = connector.notes_op.read_note()
         self.assertEqual(note.content, content)
 

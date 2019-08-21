@@ -42,7 +42,8 @@ class Puller:
     def _execute_task(task):
         call = ServiceOperationReference(**task.data['reference'])
         data = task.data['data']
-        call(data)
+        params = {'args': {}, 'kwargs': data}
+        call(params)
 
     def start(self):
         """

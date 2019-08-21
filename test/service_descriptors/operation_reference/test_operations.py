@@ -29,4 +29,4 @@ class TestOperations(unittest.TestCase):
     def testReferenceOperations(self):
         app = create_application()
         reference = ServiceOperationReference("service1", "NotesOperation", "read_note")
-        self.assertEqual(reference(), "My content")
+        self.assertEqual(reference({}), "My content")

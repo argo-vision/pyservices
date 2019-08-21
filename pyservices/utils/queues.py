@@ -7,7 +7,7 @@ from multiprocessing import Pipe
 from google.cloud import tasks_v2
 from persistqueue import FIFOSQLiteQueue
 
-from pyservices.utils.gcloud import check_if_gcloud, get_service_id, get_location_id, get_project_id
+from pyservices.utils.gcloud import check_if_gcloud, get_service_id, get_location_id, get_project_id, get_queue_id
 from pyservices.utils.pullers import Puller
 
 logger = logging.getLogger(__package__)
@@ -225,8 +225,8 @@ class GcloudTaskQueue(BaseQueue):
         """
         project_id = get_project_id()
         location_id = get_location_id()
-        service_id = get_service_id()
-        return GcloudTaskQueue(project_id, location_id, service_id)
+        queue_id = get_queue_id()
+        return GcloudTaskQueue(project_id, location_id, queue_id)
 
     def build_task(self, service, interface, method, data):
         task = {
@@ -256,23 +256,23 @@ class GcloudTaskQueue(BaseQueue):
         task = {
             'app_engine_http_request': {  # Specify the type of request.
                 'http_method': method,
-                'url': relative_url
+                'relative_uri': relative_url
             }
         }
 
         if method in ["POST", "PUT"]:
             if data is None:
                 data = {}
-            task['app_engine_http_request']['body'] = json.dumps(data, default=str)
+            task['app_engine_http_request']['body'] = json.dumps(data, default=str).encode()
         elif method == "GET" and data is not None:
             parameters = urllib.parse.urlencode(data)
-            task['app_engine_http_request']['url'] = '{}?{}'.format(relative_url, parameters)
+            task['app_engine_http_request']['relative_uri'] = '{}?{}'.format(relative_url, parameters)
 
         # Use the client to build and send the task.
 
         try:
             response = self.client.create_task(self.parent, task)
-            response_str = 'Created task {}'.format(response['name'])
+            response_str = 'Created task {}'.format(response.name)
             logger.info(response_str)
             return response
         except Exception as ex:
@@ -287,8 +287,8 @@ class GcloudTaskQueue(BaseQueue):
     #     return tasks
 
     def is_processing(self):
-        from pyservices.service_descriptors.frameworks import request_info
-        return 'AppEngine-Google' in request_info.user_agent
+        from pyservices.service_descriptors.WSGIAppWrapper import request_info
+        return 'AppEngine-Google' in request_info.info.user_agent
 
 
 class QueuesType(Enum):

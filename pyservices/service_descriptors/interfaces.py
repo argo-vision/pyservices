@@ -251,6 +251,8 @@ class RPCInterface(HTTPInterface):
     """RPC interface used to perform remote procedure calls.
     """
 
+    codec = JSON
+
     def _get_instance_calls(self):
         """
 
@@ -298,6 +300,7 @@ class EventInterface(HTTPInterface):
     """
     queue_type = None
     queue_configuration = None
+    codec = JSON
 
     def __init__(self, service):
         from pyservices.utils.queues import get_queue
@@ -319,6 +322,7 @@ class EventInterface(HTTPInterface):
                 method=method,
                 http_method=method.http_method,
                 path=f'{self._get_endpoint()}/{method.path}')
+
         # TODO: exposition must be gcloud dependent
 
         return [create_descriptor(m)
@@ -334,30 +338,36 @@ def event(path=None, method="GET"):
     def my_decorator(func):
         if hasattr(func, 'path'):
             return func
+        relative_path = path or func.__name__.replace('_', '-')
+        http_method = method.lower()
 
         @wraps(func)
-        def dispatcher(self, *args, **kwargs):
-            def enqueue_message(message):
+        def dispatcher(self, *args, **params):
+            func.path = relative_path
+            func.http_method = http_method
+
+            def enqueue_message(params):
                 try:
-                    task = self.queue.build_task(self.service, self, func, message)
+                    task = self.queue.build_task(self.service, self, func, params)
                     return self.queue.add_task(task)
                 except:
                     return "nack"
 
-            def process_message(message):
+            def process_message(params):
                 # TODO: Manage security and other "container" stuff (log, audit, ...).
-                func(self, *message.args, **message.kwargs)
 
-            def dispatch_message(message):
+                func(self, *params['args'], **params['kwargs'])
+
+            def dispatch_message(params):
                 op = process_message if self.queue.is_processing() else enqueue_message
-                return op(message)
+                return op(params)
 
             # Dispatching:
-            return dispatch_message({"args": args, "kwargs": kwargs})
+            return dispatch_message(params)
 
         # Some data to add to the operation-descriptor:
-        dispatcher.http_method = method.lower()
-        dispatcher.path = path or func.__name__.replace('_', '-')
+        dispatcher.http_method = http_method
+        dispatcher.path = relative_path
 
         # The decorated call is the dispatcher:
         return dispatcher
@@ -379,6 +389,7 @@ def HTTP_op(exposition: HTTPExposition = HTTPExposition.ON_DEPENDENCY):
         @wraps(func)
         def http_operation(*args, **kwargs):
             return func(*args, **kwargs)
+
         http_operation.exposition = exposition
         return http_operation
 

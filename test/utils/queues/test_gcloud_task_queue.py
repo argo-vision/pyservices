@@ -32,9 +32,9 @@ class TestGcloudTaskQueue(unittest.TestCase):
 
         response = self.gcloud_task_queue.add_task(task)
 
-        self.assertEqual(response['name'], expected_name)
-        self.assertEqual(response['task']['url'], expected_url)
-        self.assertEqual(response['task']['args'], expected_args)
+        self.assertEqual(response.name, expected_name)
+        self.assertEqual(response.task['url'], expected_url)
+        self.assertEqual(response.task['args'], expected_args)
 
     def test_add_get_task_with_params(self):
         url = "/"
@@ -46,19 +46,19 @@ class TestGcloudTaskQueue(unittest.TestCase):
 
         response = self.gcloud_task_queue.add_task(task)
 
-        self.assertEqual(response['name'], expected_name)
-        self.assertEqual(response['task']['url'], expected_url)
-        self.assertEqual(response['task']['args'], expected_args)
+        self.assertEqual(response.name, expected_name)
+        self.assertEqual(response.task['url'], expected_url)
+        self.assertEqual(response.task['args'], expected_args)
 
     def test_add_post_task(self):
         expected_url = "/"
         expected_body = {"test": "test"}
-        json_expected_body = {'data': json.dumps(expected_body, default=str)}
+        json_expected_body = {'data': json.dumps(expected_body, default=str).encode()}
         task = {"method": "post", "relative_url": expected_url, "data": expected_body}
         expected_name = 'Fake gcloud task'
 
         response = self.gcloud_task_queue.add_task(task)
 
-        self.assertEqual(response['name'], expected_name)
-        self.assertEqual(response['task']['url'], expected_url)
-        self.assertEqual(response['task']['args'], json_expected_body)
+        self.assertEqual(response.name, expected_name)
+        self.assertEqual(response.task['url'], expected_url)
+        self.assertEqual(response.task['args'], json_expected_body)

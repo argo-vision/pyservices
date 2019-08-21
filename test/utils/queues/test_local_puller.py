@@ -59,7 +59,8 @@ class TestLocalPuller(unittest.TestCase):
         for i in range(10):
             method = Mock()
             method.__name__ = "test"
-            task = queue.build_task(self.service, self.interface, method, data=[1, 2, 3])
+            task = queue.build_task(self.service, self.interface, method,
+                                    data={'args': {}, 'kwargs': {'data' : [1, 2, 3]}})
             queue.add_task(task)
         return None
 

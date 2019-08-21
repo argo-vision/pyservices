@@ -9,6 +9,7 @@ from pyservices import JSON
 from pyservices.service_descriptors.proxy.proxy_interface import EndPoint
 from pyservices.utils.exceptions import ClientException
 
+
 # TODO refactor; merge proxies together?
 
 
@@ -142,18 +143,18 @@ class LocalRestRequestCall(RestEndPoint):
     def update(self, res_id, data):
         return self._update(res_id)
 
-    def collect(self, **kwargs):
+    def collect(self, params):
         def get_callable_collect():
             for c in self._collect:
                 try:
                     sg = inspect.signature(c)
-                    sg.bind(**kwargs)
+                    sg.bind(**params)
                     return c
                 except TypeError:
                     continue
 
         coll = get_callable_collect()
-        return coll(**kwargs)
+        return coll(**params)
 
     def detail(self, res_id):
         return self._detail(res_id)
@@ -177,7 +178,7 @@ class RestDispatcherEndPoint(RestEndPoint):
             self._request_handler = LocalRestRequestCall(service_location)
         self.meta_model = iface.meta_model
 
-    def collect(self, params: dict = None):
+    def collect(self, params=None):
         if params:
             if not isinstance(params, dict):
                 raise TypeError(
@@ -192,6 +193,8 @@ class RestDispatcherEndPoint(RestEndPoint):
                 if isinstance(v, str) and illegal_params_re.search(v):
                     raise TypeError(f'The param values cannot contain '
                                     f'{illegal_params_re.pattern}.')
+        else:
+            params = {}
 
         return self._request_handler.collect(params)
 

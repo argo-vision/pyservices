@@ -1,4 +1,5 @@
 import threading
+from typing import NamedTuple
 
 import requests
 
@@ -18,7 +19,7 @@ class _GcloudFakeQueue:
 
     def create_task(self, parent, task):
         app_engine_http_request = task['app_engine_http_request']
-        url = app_engine_http_request['url']
+        url = app_engine_http_request['relative_uri']
         http_method = app_engine_http_request['http_method']
 
         if http_method == "POST":
@@ -36,8 +37,16 @@ class _GcloudFakeQueue:
         final_task = {'call': call, 'url': url, 'args': kwargs}
         self._queue.add_task(final_task)
 
-        response = {'name': "Fake gcloud task", 'task': final_task}
+        response = TaskResponse("Fake gcloud task", final_task)
         return response
+
+
+class TaskResponse(NamedTuple):
+    """
+    Descriptor of the response
+    """
+    name: str
+    task: dict
 
 
 class GcloudFakeQueuePuller:

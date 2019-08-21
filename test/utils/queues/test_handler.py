@@ -32,7 +32,6 @@ class TestHandler(TestCase):
         handler.feed([message])
 
         chain.assert_called_once()
-        message.nack.assert_called_once()
         self.assertEqual(call(message.data), chain.call_args)
         saver.save.assert_not_called()
 

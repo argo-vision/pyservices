@@ -80,6 +80,7 @@ class AccountManager(Service):
 
         @event(path="test-queue")
         def test_queue(self, arg1, arg2):
+            print(arg1)
             return "processed"
 
 

@@ -24,6 +24,9 @@ class Service1(Service):
         def detail(self, res_id):
             return my_notes[0]
 
+        def collect(self):
+            return my_notes
+
     class NotesOperation(RPCInterface):
         if_path = 'notes-op'
 

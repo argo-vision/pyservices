@@ -7,8 +7,9 @@ from pyservices.utils.exceptions import ClientException
 
 
 class RemoteRPCRequestCall:
-    def __init__(self, iface_location):
+    def __init__(self, iface_location, codec):
         self.iface_location = iface_location
+        self._codec = codec
 
     def path(self, path=None):
         if path is None:
@@ -19,7 +20,8 @@ class RemoteRPCRequestCall:
     def post(self, path, data):
         try:
             # FIXME: this is really bad
-            resp = requests.post(self.path(path), json=data, timeout=5)
+            data = self._codec.encode(data)
+            resp = requests.post(self.path(path), data=data, timeout=5)
         except Exception as e:
             raise ClientException('Exception on post request to'.format(path))
 
@@ -70,7 +72,7 @@ class RPCDispatcherEndPoint(EndPoint):
     def __init__(self, iface, service_location):
         if type(service_location) == str:
             iface_location = f'{service_location}/{iface._get_interface_path()}'
-            self._request_handler = RemoteRPCRequestCall(iface_location)
+            self._request_handler = RemoteRPCRequestCall(iface_location, iface.codec)
             calls = iface._get_class_calls()
             for rpc in calls.values():
                 name = rpc.path.replace('-', '_')

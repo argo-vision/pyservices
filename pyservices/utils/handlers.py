@@ -41,7 +41,6 @@ class Handler:
                     val = self._chain[key](x.data)
                 except Exception as e:
                     logger.error("Failed to process data: {}".format(e))
-                    x.nack()
                     break
 
                 result[key] = val
