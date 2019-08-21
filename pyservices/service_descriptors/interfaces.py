@@ -301,6 +301,7 @@ class EventInterface(HTTPInterface):
     queue_type = None
     queue_configuration = None
     codec = JSON
+    queue = None
 
     def __init__(self, service):
         from pyservices.utils.queues import get_queue

@@ -74,15 +74,6 @@ class AccountManager(Service):
         def collect(self):
             return notes
 
-    class Events(EventInterface):
-        queue_type = QueuesType.NOT_PERSISTENT
-        if_path = "events"
-
-        @event(path="test-queue")
-        def test_queue(self, arg1, arg2):
-            print(arg1)
-            return "processed"
-
 
 def register_component(ctx: Context):
     service = AccountManager()

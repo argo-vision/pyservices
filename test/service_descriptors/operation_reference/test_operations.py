@@ -27,6 +27,8 @@ class TestOperations(unittest.TestCase):
         config_utils._config_dir = cls._old_config_dir
 
     def testReferenceOperations(self):
-        app = create_application()
+        create_application()
         reference = ServiceOperationReference("service1", "NotesOperation", "read_note")
-        self.assertEqual(reference({}), "My content")
+
+        response = reference.__call__({})
+        self.assertIsInstance(response, str)

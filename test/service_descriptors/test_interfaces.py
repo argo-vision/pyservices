@@ -4,6 +4,8 @@ from unittest.mock import Mock
 
 from pyservices.service_descriptors.interfaces import \
     InterfaceOperationDescriptor
+from pyservices.utils import queues
+from pyservices.utils.queues import Queue
 from test.service_descriptors.components.raw_interfaces import TestEventInterface
 from test.service_descriptors.components.raw_interfaces import TestRPCInterface, \
     TestRestInterface
@@ -40,6 +42,10 @@ class ServiceConnectorTest(unittest.TestCase):
             self.assertIsInstance(op, InterfaceOperationDescriptor)
 
     def testEventInterfaceHttpOperations(self):
+
+        queues.get_queue = Mock()
+        queues.get_queue.return_value = Queue()
+
         service = Mock()
         service.service_base_path = 'service_base_path'
         iface = TestEventInterface(service)

@@ -8,9 +8,7 @@ import pyservices.context.microservice_utils as config_utils
 from pyservices.context import context
 from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
 from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.utils import queues
 from pyservices.utils.exceptions import ClientException
-from pyservices.utils.queues import Queue
 from test.data_descriptors.meta_models import *
 from test.service_descriptors.components.account_manager import AccountManager
 from test.service_descriptors.components.service1 import Service1, note_mm
@@ -51,11 +49,8 @@ class ServiceConnectorTest(unittest.TestCase):
         config_utils._config_dir = cls._old_config_dir
 
     def setUp(self):
-        queues.get_queue = Mock()
-        self.queue = Queue()
-        queues.get_queue.return_value = self.queue
-        service = AccountManager()
 
+        service = AccountManager()
         app_wrapper = FalconWrapper()  # TODO the only WSGI framework implemented
         app_wrapper.register_route(service)
         self.httpd = simple_server.make_server(address, account_manager_port, app_wrapper.app)
@@ -180,19 +175,3 @@ class ServiceConnectorTest(unittest.TestCase):
         note = self.connector.notes_op.get_note(note_id=0)
         self.assertEqual(note, 'my note')
 
-    def testClientEvent(self):
-        context.context = Mock()
-        context.context.get_component.return_value = self.connector
-        first_event_id = self.connector.events.test_queue(arg1="test1", arg2="test2")
-
-        self.assertEqual(self.queue._last_id, first_event_id)
-
-    def testSequenceEvents(self):
-        context.context = Mock()
-        context.context.get_component.return_value = self.connector
-        task1 = self.connector.events.test_queue(arg1="test1", arg2="test2")
-        task2 = self.connector.events.test_queue(arg1="test1", arg2="test2")
-        task3 = self.connector.events.test_queue(arg1="test1", arg2="test2")
-        task4 = self.connector.events.test_queue(arg1="test1", arg2="test2")
-
-        self.assertEqual(self.queue._last_id, task4)
