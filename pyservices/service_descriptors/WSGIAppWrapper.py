@@ -112,7 +112,7 @@ class FalconWrapper(WSGIAppWrapper):
 
         # Aggregate calls by paths
         for op in self.get_exposed_operations(iface):
-            ps.log.debug("Creating {} - {}".format(op.path, op.http_method))
+            ps.log.debug("Creating {} - {}".format(op.path, op.http_method))  # FIXME move me
             operations[op.path].append(op)
 
         # Update single resource for path
