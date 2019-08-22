@@ -32,19 +32,25 @@ def register_component(ctx: Context):
 
 Gianluca Scarpellini - gianluca.scarpellini@argo.vision
 """
-from pyservices.service_descriptors.proxy import create_service_connector
-from pyservices.utilities.exceptions import ComponentNotFound
 from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.service_descriptors.proxy import create_service_connector
+from pyservices.utils.exceptions import ComponentNotFound
+
+context = None
 
 
 class Context:
     def __init__(self):
+        global context
+        context = self
         self._state = dict()
         self._startup_functions = []
         self.APP_KEY = "APP"
         self._state[self.APP_KEY] = None
 
     def register(self, key, component):
+        if self.check_component_is_registered(key):
+            return
 
         if isinstance(component, Service):
             self._state[key] = create_service_connector(component.__class__, component)
@@ -70,7 +76,7 @@ class Context:
     def get_component(self, key):
         try:
             return self._state[key]
-        except Exception:
+        except KeyError:
             raise ComponentNotFound('Cannot find {}'.format(key))
 
     def get_services(self):

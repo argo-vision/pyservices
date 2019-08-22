@@ -1,64 +1,56 @@
+import os
 import unittest
 
-from pyservices.context.microservice_utils import MicroServiceConfiguration
+import pyservices.context.microservice_utils as config_utils
+from test.context.uservices import get_path
 
 
-class MicroServicesTestCase(unittest.TestCase):
-    def test_microserivces_list(self):
-        configuration = {
-            "a": {
-                "services": [],
-                "PORT": 5009,
-                "address": "localhost"
-            },
-            "c": {
-                "services": [],
-                "PORT": 5009,
-                "address": "localhost"
-            },
-            "b": {
-                "services": [],
-                "PORT": 5009,
-                "address": "localhost"
-            },
-        }
+class TestMicroservices(unittest.TestCase):
+    _old_service_name = os.getenv("GAE_SERVICE")
+    _old_config_dir = config_utils._config_dir
+    _my_config_path = 'test.context.uservices'
 
-        c = MicroServiceConfiguration(configuration, "a")
+    @classmethod
+    def setUpClass(cls):
+        os.environ["GAE_SERVICE"] = "MICROService1"
+        config_utils._config_dir = cls._my_config_path
 
-        microservices = c.microservices_names()
-        self.assertEqual(["a", "b", "c"], sorted(microservices))
+    @classmethod
+    def tearDownClass(cls):
+        if cls._old_service_name:
+            os.environ["GAE_SERVICE"] = cls._old_service_name
+        else:
+            os.environ.pop("GAE_SERVICE")
+        config_utils._config_dir = cls._old_config_dir
 
-    def test_microservices_not_existent(self):
-        configuration = {}
-        self.assertRaises(ValueError, MicroServiceConfiguration, configuration, "a")
+    def test_config_dict(self):
+        config = config_utils.current_config()
+        self.assertIsInstance(config, dict)
+        for v in config.values():
+            self.assertIsInstance(v, dict)
 
-    def test_microservices_address(self):
-        configuration = {"a": {"port": "1000", "address": "localhost"}}
-        c = MicroServiceConfiguration(configuration, "a")
+    def test_microservices_host(self):
+        self.assertEqual('localhost:1234', config_utils.host('microservice1'))
 
-        self.assertEqual("localhost:1000", c.address())
-
-    def test_find_service(self):
-        configuration = {"a": {"services": ["b"]}}
-        c = MicroServiceConfiguration(configuration, "a")
-
-        self.assertEqual("a", c.microservice_of("b"))
-
-    def test_find_service_error(self):
-        configuration = {"a": {}}
-        c = MicroServiceConfiguration(configuration, "a")
-
-        self.assertRaises(ValueError, c.microservice_of, "b")
-
-    def test_service_address(self):
-        configuration = {"a": {"services": ["b"], "port": "1000", "address": "localhost"}}
-        c = MicroServiceConfiguration(configuration, "a")
-
-        self.assertEqual("localhost:1000", c.address_of("b"))
+    def test_service_host(self):
+        self.assertEqual('localhost:7890', config_utils.host(get_path('service3')))
 
     def test_microservice_services(self):
-        configuration = {"a": {"services": ["b"], "port": "1000", "address": "localhost"}}
-        c = MicroServiceConfiguration(configuration, "a")
+        ss = config_utils.services('microservice2')
+        self.assertEqual([get_path('service3')],
+                         ss)
+        ss = config_utils.services(get_path('service3'))
+        self.assertEqual([get_path('service3')],
+                         ss)
 
-        self.assertEqual(["b"], c.services())
+    def test_all_services(self):
+        ss = config_utils.all_services()
 
+        self.assertEqual([get_path('service1'), get_path('service2'),
+                         get_path('service3')], sorted(ss))
+
+    def test_current_microservice_name(self):
+        self.assertEqual("microservice1", config_utils.current_microservice())
+
+    def test_microservice_current_host(self):
+        self.assertEqual('localhost:1234', config_utils.current_host())

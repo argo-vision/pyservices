@@ -3,12 +3,13 @@ import json
 import requests
 
 from pyservices.service_descriptors.proxy.proxy_interface import EndPoint
-from pyservices.utilities.exceptions import ClientException
+from pyservices.utils.exceptions import ClientException
 
 
 class RemoteRPCRequestCall:
-    def __init__(self, iface_location):
+    def __init__(self, iface_location, codec):
         self.iface_location = iface_location
+        self._codec = codec
 
     def path(self, path=None):
         if path is None:
@@ -19,7 +20,8 @@ class RemoteRPCRequestCall:
     def post(self, path, data):
         try:
             # FIXME: this is really bad
-            resp = requests.post(self.path(path), json=data, timeout=5)
+            data = self._codec.encode(data)
+            resp = requests.post(self.path(path), data=data, timeout=5)
         except Exception as e:
             raise ClientException('Exception on post request to'.format(path))
 
@@ -41,7 +43,7 @@ class RemoteRPCRequestCall:
         if resp is None:
             raise ClientException("Response is empty")
         if not str(resp.status_code).startswith('2'):
-            raise ClientException("Not a 2xx")
+            raise ClientException("Not a 2xx from " + resp.url)
 
 
 class LocalRPCRequestCall:
@@ -69,14 +71,12 @@ class RPCDispatcherEndPoint(EndPoint):
 
     def __init__(self, iface, service_location):
         if type(service_location) == str:
-            iface_location = f'{service_location}/{iface.get_endpoint_name()}'
-            self._request_handler = RemoteRPCRequestCall(iface_location)
-
-            calls = iface.get_call_descriptors()
+            iface_location = f'{service_location}/{iface._get_interface_path()}'
+            self._request_handler = RemoteRPCRequestCall(iface_location, iface.codec)
+            calls = iface._get_class_calls()
             for rpc in calls.values():
                 name = rpc.path.replace('-', '_')
-
-                if rpc.method == 'post':
+                if rpc.http_method == 'post':
                     call = self._request_handler.post
                 else:
                     call = self._request_handler.get
@@ -85,7 +85,7 @@ class RPCDispatcherEndPoint(EndPoint):
         else:
             self._request_handler = LocalRPCRequestCall(service_location)
 
-            calls = iface.get_call_descriptors()
+            calls = iface._get_class_calls()
             for rpc in calls.values():
                 name = rpc.path.replace('-', '_')
 

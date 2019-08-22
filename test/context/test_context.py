@@ -1,99 +1,32 @@
+import os
 import unittest
 
+import pyservices.context.microservice_utils as config_utils
 from pyservices.context.dependencies import create_application
-from pyservices.context.dependencies import microservice_sorted_dependencies, \
-    components_graph, topological_sort, is_acyclic
-from pyservices.context.microservice_utils import MicroServiceConfiguration
-from pyservices.service_descriptors.frameworks import FrameworkApp
-from pyservices.utilities.exceptions import MicroServiceConfigurationError, \
-    ServiceDependenciesError
-from test.context.configuration import configurations
+from pyservices.service_descriptors.WSGIAppWrapper import WSGIAppWrapper
 
 
 class TestContext(unittest.TestCase):
-    def testNullMicroService(self):
-        self.assertRaises(MicroServiceConfigurationError,
-                          microservice_sorted_dependencies,
-                          ['not-real-ms'])
+    _old_service_name = os.getenv("GAE_SERVICE")
+    _old_config_dir = config_utils._config_dir
+    _my_config_path = 'test.context.uservices'
 
-    def testEmptyMicroService(self):
-        self.assertRaises(MicroServiceConfigurationError,
-                          microservice_sorted_dependencies,
-                          configurations['micro-service-empty']['services'])
+    @classmethod
+    def setUpClass(cls):
+        config_utils._config_dir = cls._my_config_path
 
-    def testMicroServiceWithNotRealComponent(self):
-        self.assertRaises(MicroServiceConfigurationError,
-                          microservice_sorted_dependencies,
-                          configurations['micro-service-broken']['services'])
-
-    def testTopologicalSort(self):
-        ts = ['pyservices.service_descriptors.frameworks',
-              'test.context.components.service3',
-              'test.context.components.component2',
-              'test.context.components.component1',
-              'test.context.components.service2',
-              'test.context.components.service1']
-        graph = {
-            'test.context.components.service1': [
-                'pyservices.service_descriptors.frameworks',
-                'test.context.components.component1'],
-            'test.context.components.component1': [
-                'test.context.components.component2'],
-            'test.context.components.component2': [
-                'test.context.components.service3'],
-            'test.context.components.service3': [
-                'pyservices.service_descriptors.frameworks'],
-            'pyservices.service_descriptors.frameworks': [],
-            'test.context.components.service2': [
-                'pyservices.service_descriptors.frameworks',
-                'test.context.components.component1']}
-        self.assertListEqual(topological_sort(graph), ts)
-
-    def testMicroServiceDependencies(self):
-        deps = microservice_sorted_dependencies(
-            configurations['micro-service1']['services'])
-        expected = ['pyservices.service_descriptors.frameworks',
-                    'test.context.components.service3',
-                    'test.context.components.component2',
-                    'test.context.components.component1',
-                    'test.context.components.service1',
-                    'test.context.components.service2']
-        self.assertListEqual(deps, expected)
-
-    def testAcyclicGraph(self):
-        cyclic = {'A': ['B'], 'B': ['C'], 'C': ['A']}
-        self.assertFalse(is_acyclic(cyclic))
-        acyclic = {'A': ['B'], 'B': ['C'], 'C': []}
-        self.assertTrue(is_acyclic(acyclic))
-
-    def testAcyclicGraph2(self):
-        acyclic = {'S1': ['C1', 'F'], 'C1': ['C2'], 'C2': ['S3'], 'S2': ['F', 'C1', 'S1'], 'F':[]}
-        self.assertTrue(is_acyclic(acyclic))
-
-
-    # NOTE: this is commented because is false
-    def ignored_testCyclicDeps(self):
-        conf = MicroServiceConfiguration(configurations, 'micro-service-circular')
-        self.assertRaises(ServiceDependenciesError, create_application, conf)
-
-    def testComponentGraph(self):
-        graph = components_graph({},
-                                 configurations['micro-service1']['services'][0])
-        from test.context.components.service1 import COMPONENT_KEY as key
-        from test.context.components.service1 import COMPONENT_DEPENDENCIES as deps
-        self.assertEqual(graph[key], deps)
-        graph = components_graph({},
-                                 configurations['micro-service1']['services'][
-                                     1])
-        from test.context.components.service2 import COMPONENT_KEY as key
-        from test.context.components.service2 import \
-            COMPONENT_DEPENDENCIES as deps
-        self.assertEqual(graph[key], deps)
+    @classmethod
+    def tearDownClass(cls):
+        if cls._old_service_name:
+            os.environ["GAE_SERVICE"] = cls._old_service_name
+        else:
+            os.environ.pop("GAE_SERVICE")
+        config_utils._config_dir = cls._old_config_dir
 
     def testCreateApplication(self):
-        conf = MicroServiceConfiguration(configurations, 'micro-service1')
-        app = create_application(conf)
-        self.assertTrue(isinstance(app, FrameworkApp))
-        conf = MicroServiceConfiguration(configurations, 'micro-service2')
-        app = create_application(conf)
-        self.assertTrue(isinstance(app, FrameworkApp))
+        os.environ["GAE_SERVICE"] = "microservice1"
+        app = create_application()
+        self.assertTrue(isinstance(app, WSGIAppWrapper))
+        os.environ["GAE_SERVICE"] = "microservice2"
+        app = create_application()
+        self.assertTrue(isinstance(app, WSGIAppWrapper))

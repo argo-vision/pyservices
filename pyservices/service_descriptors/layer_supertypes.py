@@ -7,6 +7,7 @@ class Service:
     """ Base class used for implementing a service.
     """
     service_base_path = None
+    _module_prefix = 'services'
 
     def __init__(self):
         """ Initialize the service instance.
@@ -32,3 +33,38 @@ class Service:
         return [cls_attribute for cls_attribute in cls.__dict__.values()
                 if inspect.isclass(cls_attribute)
                 and issubclass(cls_attribute, HTTPInterface)]
+
+    @staticmethod
+    def get_method_reference(service_name, interface_name, method_name):
+        return ServiceOperationReference(service_name, interface_name, method_name)
+
+
+class ServiceOperationReference:
+    def __init__(self, service_name, interface_name, method_name):
+        from pyservices.context import context
+        self.ctx = context.context
+        self.service = self.get_service(service_name)
+        self.interface = self.get_interface(interface_name)
+        self.method = self.get_method(method_name)
+
+    def get_service(self, service_name):
+        keyword_service_name = Service._module_prefix + "." + service_name
+        return self.ctx.get_component(keyword_service_name.lower())
+
+    def get_interface(self, interface_name):
+        for s in self.service:
+            if hasattr(s._request_handler, 'instance'):
+                instance = s._request_handler.instance  # FIXME: this will change
+                if instance.__class__.__name__.lower() == interface_name.lower():
+                    return instance
+        raise Exception()
+
+    def get_method(self, method_name):
+        methods = inspect.getmembers(self.interface, lambda m: inspect.ismethod(m))
+        for m in methods:
+            if m[0] == method_name.lower():
+                return m[1]
+        raise Exception()
+
+    def __call__(self, params):
+        return self.method(**params)

@@ -6,7 +6,7 @@ from pyservices.service_descriptors.interfaces import RestResourceInterface, \
 
 from pyservices.data_descriptors.fields import StringField
 
-COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.frameworks']
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper']
 COMPONENT_KEY = __name__
 
 note_mm = MetaModel('MyNote', StringField('title'), StringField('content'),
@@ -23,6 +23,9 @@ class Service1(Service):
 
         def detail(self, res_id):
             return my_notes[0]
+
+        def collect(self):
+            return my_notes
 
     class NotesOperation(RPCInterface):
         if_path = 'notes-op'

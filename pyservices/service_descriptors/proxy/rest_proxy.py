@@ -7,7 +7,10 @@ import requests
 
 from pyservices import JSON
 from pyservices.service_descriptors.proxy.proxy_interface import EndPoint
-from pyservices.utilities.exceptions import ClientException
+from pyservices.utils.exceptions import ClientException
+
+
+# TODO refactor; merge proxies together?
 
 
 def _check_instances(resource, resource_class):
@@ -26,7 +29,7 @@ def _check_message_status(resp):
     if resp is None:
         raise ClientException("Response is empty")
     if not str(resp.status_code).startswith('2'):
-        raise ClientException("Not a 2xx")
+        raise ClientException("Not a 2xx from " + resp.url)
 
 
 class RestEndPoint(EndPoint):
@@ -54,7 +57,7 @@ class RestEndPoint(EndPoint):
 class RemoteRestRequestCall(RestEndPoint):
     def __init__(self, iface_location, meta_model):
         self.iface_location = iface_location
-        self.model = meta_model
+        self.meta_model = meta_model
 
     def path(self, path):
         if path is None:
@@ -63,15 +66,19 @@ class RemoteRestRequestCall(RestEndPoint):
             return "{}/{}".format(self.iface_location, path)
 
     def add(self, data):
-        if not _check_instances(data, self.model.get_class()):
-            raise ValueError('Expected a {}'.format(self.model.name))
+        if not _check_instances(data, self.meta_model.get_class()):
+            raise ValueError('Expected a {}'.format(self.meta_model.name))
         try:
             resp = requests.put(self.path(None), data=JSON.encode(data), timeout=5)
         except Exception:
             raise ClientException('Exception on request')
 
         _check_message_status(resp)
-        return resp.headers['location'].split('/')[-1]
+        pk_name = self.meta_model.primary_key_field.name
+        if isinstance(data, list):
+            return [getattr(d, pk_name) for d in data]
+        else:
+            return getattr(data, pk_name)
 
     def delete(self, res_id):
         if isinstance(res_id, dict):
@@ -105,7 +112,7 @@ class RemoteRestRequestCall(RestEndPoint):
             raise ClientException('Exception on request')
 
         _check_message_status(resp)
-        return JSON.decode(resp.content, self.model)
+        return JSON.decode(resp.content, self.meta_model)
 
     def detail(self, res_id):
         if isinstance(res_id, dict):
@@ -116,14 +123,14 @@ class RemoteRestRequestCall(RestEndPoint):
             raise ClientException('Exception on request')
 
         _check_message_status(resp)
-        return JSON.decode(resp.content, self.model)
+        return JSON.decode(resp.content, self.meta_model)
 
 
-# FIXME: mayube not all this functions are implemented
+# FIXME: maybe not all this functions are implemented
 class LocalRestRequestCall(RestEndPoint):
     def __init__(self, instance):
 
-        methods = instance.get_calls()
+        methods = instance._get_instance_calls()
         self._collect = methods.get('collect')
         self._add = methods.get('add')
         self._detail = methods.get('detail')
@@ -136,18 +143,18 @@ class LocalRestRequestCall(RestEndPoint):
     def update(self, res_id, data):
         return self._update(res_id)
 
-    def collect(self, **kwargs):
+    def collect(self, params):
         def get_callable_collect():
             for c in self._collect:
                 try:
                     sg = inspect.signature(c)
-                    sg.bind(**kwargs)
+                    sg.bind(**params)
                     return c
                 except TypeError:
                     continue
 
         coll = get_callable_collect()
-        return coll(**kwargs)
+        return coll(**params)
 
     def detail(self, res_id):
         return self._detail(res_id)
@@ -165,13 +172,13 @@ class RestDispatcherEndPoint(RestEndPoint):
         """ Initialize the rest resource end point.
         """
         if type(service_location) == str:
-            iface_location = f'{service_location}/{iface.get_endpoint_name()}'
+            iface_location = f'{service_location}/{iface._get_interface_path()}'
             self._request_handler = RemoteRestRequestCall(iface_location, iface.meta_model)
         else:
             self._request_handler = LocalRestRequestCall(service_location)
         self.meta_model = iface.meta_model
 
-    def collect(self, params: dict = None):
+    def collect(self, params=None):
         if params:
             if not isinstance(params, dict):
                 raise TypeError(
@@ -186,6 +193,8 @@ class RestDispatcherEndPoint(RestEndPoint):
                 if isinstance(v, str) and illegal_params_re.search(v):
                     raise TypeError(f'The param values cannot contain '
                                     f'{illegal_params_re.pattern}.')
+        else:
+            params = {}
 
         return self._request_handler.collect(params)
 

@@ -16,7 +16,7 @@
 <ellipse id="s624873656" cx="310.0" cy="450.0" rx="10.0" ry="10.0" fill="none" stroke-width="2.0" stroke="rgb(0,0,0)"/>
 <g id="t624873656">
 <text x="269.08203" y="444.58203" font-family="Helvetica" fill="rgb(0,0,0)" font-size="14" textLength="35.0">insert</text>
-<text x="271.08203" y="463.1621" font-family="Helvetica" fill="rgb(0,0,0)" font-size="14" textLength="31.0">(put)</text>
+<text x="271.08203" y="463.1621" font-family="Helvetica" fill="rgb(0,0,0)" font-size="14" textLength="31.0">(add_task)</text>
 </g>
 </g>
 <g id="g398001393">

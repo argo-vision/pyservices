@@ -1,7 +1,12 @@
+from pyservices.context import Context
 from pyservices.service_descriptors.interfaces import RPC, \
-    RestResourceInterface, RPCInterface
+    RestResourceInterface, RPCInterface, EventInterface, event
 from pyservices.service_descriptors.layer_supertypes import Service
+from pyservices.utils.queues import QueuesType
 from test.data_descriptors.meta_models import *
+
+COMPONENT_DEPENDENCIES = ['pyservices.service_descriptors.WSGIAppWrapper']
+COMPONENT_KEY = __name__
 
 
 class AccountManager(Service):
@@ -19,8 +24,8 @@ class AccountManager(Service):
 
         @RPC(method="get")
         def check_args(self, arg1, arg2):
-            assert(arg1 == self.arg1)
-            assert(arg2 == self.arg2)
+            assert (arg1 == self.arg1)
+            assert (arg2 == self.arg2)
 
         @RPC(method="post")
         def no_args(self):
@@ -51,14 +56,14 @@ class AccountManager(Service):
         def detail(self, res_id):
             return accounts[int(res_id)]
 
-        def add(self, account):
+        def add(self, resource):
             res_id = '123'
-            assert type(account) is Account
+            assert isinstance(resource, (Account, list))
             return res_id
 
-        def update(self, res_id, account):
+        def update(self, res_id, resource):
             assert type(res_id) is int
-            assert type(account) is Account
+            assert type(resource) is Account
 
         def delete(self, res_id):
             assert type(res_id) is int
@@ -68,3 +73,10 @@ class AccountManager(Service):
 
         def collect(self):
             return notes
+
+
+def register_component(ctx: Context):
+    service = AccountManager()
+    ctx.register(COMPONENT_KEY, service)
+    app = ctx.get_app()
+    app.register_route(service)

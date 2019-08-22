@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='pyservices',
-    version='0.0.4',
+    version='0.0.6',
     author="Alberto Fanton",
     author_email="alberto.fanton@argo.vision",
     description="Pyservices",
@@ -16,4 +16,12 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
+    install_requires=[
+        "persist-queue==0.4.1",
+        "falcon==1.4.1",
+        "pymongo==3.7.2",
+        "requests==2.21.0",
+        "google-cloud-tasks==1.1.0"
+
+    ]
 )
