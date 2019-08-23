@@ -77,7 +77,7 @@ class FalconWrapper(WSGIAppWrapper):
 
     def __init__(self):
         super().__init__()
-        self.app = falcon.API()
+        self.app = falcon.API(middleware=[FalconWrapper.CORSComponent()])
         self._resources = {}
 
     def register_route(self, service):
@@ -99,7 +99,7 @@ class FalconWrapper(WSGIAppWrapper):
             (x.children for x in self.app._router._roots))
         registered_uris += [x.uri_template for x in children]
         for uri in registered_uris:
-            ps.log.info("Registered: {}".format(uri))
+            ps.log.info("Registered: {}".format(uri))  # FIXME some none rotes
 
     def _update_falcon_resource(self, service):
         # Update resources for every interface of the service
@@ -159,6 +159,28 @@ class FalconWrapper(WSGIAppWrapper):
                         res.status = falcon.HTTP_500
 
                 return falcon_handler
+
+    # TODO this (+ middleware concept) must be generalized ASAP
+    class CORSComponent:
+        def process_response(self, req, resp, resource, req_succeeded):
+            resp.set_header('Access-Control-Allow-Origin', '*')  # TODO  not really safe!!!
+            if (req_succeeded
+                    and req.method == 'OPTIONS'
+                    and req.get_header('Access-Control-Request-Method')
+            ):
+                allow = resp.get_header('Allow')
+                resp.delete_header('Allow')
+
+                allow_headers = req.get_header(
+                    'Access-Control-Request-Headers',
+                    default='*'
+                )
+
+                resp.set_headers((
+                    ('Access-Control-Allow-Methods', allow),
+                    ('Access-Control-Allow-Headers', allow_headers),
+                    ('Access-Control-Max-Age', '86400'),  # 24 hours
+                ))
 
 
 def register_component(ctx: Context):
