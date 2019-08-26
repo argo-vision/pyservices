@@ -52,3 +52,4 @@ class ServiceConnectorTest(unittest.TestCase):
         ops = iface._get_http_operations()
         for op in ops:
             self.assertIsInstance(op, InterfaceOperationDescriptor)
+

@@ -9,6 +9,7 @@ from pyservices import JSON
 from pyservices.data_descriptors.entity_codecs import Codec
 from pyservices.data_descriptors.fields import ComposedField
 from pyservices.utils.exceptions import InterfaceDefinitionException
+from pyservices.utils.gcloud import check_if_gcloud
 
 logger = logging.getLogger(__package__)
 
@@ -322,7 +323,8 @@ class EventInterface(HTTPInterface):
                 interface=self,
                 method=method,
                 http_method=method.http_method,
-                path=f'{self._get_endpoint()}/{method.path}')
+                path=f'{self._get_endpoint()}/{method.path}',
+                exposition=method.exposition)
 
         # TODO: exposition must be gcloud dependent
 
@@ -367,6 +369,13 @@ def event(path=None, method="GET"):
             return dispatch_message(params)
 
         # Some data to add to the operation-descriptor:
+        if check_if_gcloud():
+            dispatcher.exposition = HTTPExposition.MANDATORY
+        elif hasattr(func, 'exposition'):
+            dispatcher.exposition = func.exposition
+        else:
+            dispatcher.exposition = HTTPExposition.ON_DEPENDENCY
+
         dispatcher.http_method = http_method
         dispatcher.path = relative_path
 
