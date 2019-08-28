@@ -47,3 +47,4 @@ def setup_logging():
 
     client = logging.Client()
     client.setup_logging()
+
