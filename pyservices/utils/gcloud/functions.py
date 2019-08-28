@@ -1,7 +1,4 @@
 from urllib.parse import urlparse
-
-from .exceptions import GcloudEnvironmentException
-from .gcloud_utilities import check_if_gcloud, get_project_id
 from .yaml_parser import YamlParser
 
 
@@ -39,17 +36,3 @@ class GcloudCronParser(YamlParser):
         return "every {} minutes".format(int((interval + 60) / 60))
 
 
-def build_gcloud_url_composer_from_environment(service_name):
-    """
-    Construct a UrlComposer object for the specified service. It's preferable over __init__ class method
-
-    :param service_name: name of the service. Can be different from the current service
-    :rtype: GcloudUrlComposer
-    """
-
-    if check_if_gcloud():
-        project_id = get_project_id()
-        composer = GcloudUrlComposer(service_name, project_id)
-        return composer
-    else:
-        raise GcloudEnvironmentException()
