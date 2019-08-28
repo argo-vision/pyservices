@@ -359,7 +359,7 @@ def event(path=None, method="GET"):
             def process_message(params):
                 # TODO: Manage security and other "container" stuff (log, audit, ...).
 
-                func(self, *params['args'], **params['kwargs'])
+                func(self, **params)
 
             def dispatch_message(params):
                 op = process_message if self.queue.is_processing() else enqueue_message

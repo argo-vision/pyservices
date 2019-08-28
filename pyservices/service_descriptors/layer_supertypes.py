@@ -66,5 +66,5 @@ class ServiceOperationReference:
                 return m[1]
         raise Exception()
 
-    def __call__(self, params):
-        return self.method(**params)
+    def __call__(self, data):
+        return self.method(**data)
