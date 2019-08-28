@@ -1,3 +1,4 @@
+import pyservices.context.microservice_utils as config_utils
 from pyservices.utils.gcloud import check_if_gcloud, get_project_id, get_service_id
 from pyservices.utils.gcloud.exceptions import GcloudEnvironmentException
 
@@ -5,8 +6,36 @@ COMPONENT_KEY = __name__
 COMPONENT_DEPENDENCIES = []
 
 
-# TODO keep url composer with static methods?
 class DefaultUrlComposer:
+    """
+    Class url composer
+    """
+
+    @staticmethod
+    def get_https_url(microservice):
+        return DefaultUrlComposer._get_url('https', config_utils.host(microservice))
+
+    @staticmethod
+    def get_http_url(microservice):
+        return DefaultUrlComposer._get_url('http', config_utils.host(microservice))
+
+    @staticmethod
+    def _get_url(protocol, host):
+        """
+        Produces the url of a given service
+
+        Args:
+            protocol (str): The protocol to prepend in the url
+            host (str): Host of the url (e.g. address:port)
+
+        Returns:
+            The url
+        """
+        return f'{protocol}://{host}'
+
+
+# TODO keep url composer with static methods?
+class LocalhostUrlComposer(DefaultUrlComposer):
     """
     Class url composer
     """
@@ -18,12 +47,12 @@ class DefaultUrlComposer:
 
         """
 
-        return DefaultUrlComposer.get_http_url(service)
+        return LocalhostUrlComposer.get_http_url(service)
 
     @staticmethod
     def get_http_url(service):
-        return f'{DefaultUrlComposer._get_url("http", DefaultUrlComposer.get_host())}:' \
-               f'{DefaultUrlComposer._get_current_port()}/{DefaultUrlComposer.get_base_route(service)}'
+        return f'{LocalhostUrlComposer._get_url("http", LocalhostUrlComposer.get_host())}:' \
+               f'{LocalhostUrlComposer._get_current_port()}/{LocalhostUrlComposer.get_base_route(service)}'
 
     @staticmethod
     def _get_current_port():
@@ -107,4 +136,4 @@ def build_localhost_url_composer():
     :rtype: GcloudUrlComposer
     """
 
-    return DefaultUrlComposer()
+    return LocalhostUrlComposer()

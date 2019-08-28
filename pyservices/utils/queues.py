@@ -274,7 +274,7 @@ class GcloudTaskQueue(BaseQueue):
             response = self.client.create_task(self.parent, task)
             response_str = 'Created task {}'.format(response.name)
             logger.info(response_str)
-            return response_str
+            return response
         except Exception as ex:
             logger.info("Cannot add task to queue, error {}".format(ex))
 
