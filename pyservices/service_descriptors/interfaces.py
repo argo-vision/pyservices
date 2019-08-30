@@ -352,7 +352,8 @@ def event(path=None, method="GET"):
             def enqueue_message(params):
                 try:
                     task = self.queue.build_task(self.service, self, func, params)
-                    return self.queue.add_task(task)
+                    self.queue.add_task(task)
+                    return "added task"
                 except:
                     return "nack"
 
