@@ -5,7 +5,7 @@ from unittest.mock import Mock
 from wsgiref import simple_server
 
 import pyservices.context.microservice_utils as config_utils
-from pyservices.context import context
+from pyservices.context import context, Context
 from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
 from pyservices.service_descriptors.proxy import create_service_connector
 from pyservices.utils import queues
@@ -52,11 +52,12 @@ class ServiceConnectorTest(unittest.TestCase):
         config_utils._config_dir = cls._old_config_dir
 
     def setUp(self):
+        self.ctx = Context()
         queues.get_queue = Mock()
         self.queue = Queue()
         queues.get_queue.return_value = self.queue
 
-        service = Service4()
+        service = Service4(self.ctx)
         app_wrapper = FalconWrapper()  # TODO the only WSGI framework implemented
         app_wrapper.register_route(service)
         self.httpd = simple_server.make_server(address, service_port, app_wrapper.app)
@@ -66,7 +67,6 @@ class ServiceConnectorTest(unittest.TestCase):
         self.service = service
         self.connector = create_service_connector(Service4, service_base_path)
         service.start()
-
 
     def tearDown(self):
         self.httpd.shutdown()

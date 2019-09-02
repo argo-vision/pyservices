@@ -18,6 +18,8 @@ def microservice_sorted_dependencies(microservice: str):
         raise MicroserviceConfigurationError("Micro service configuration "
                                              "contains no services.")
     deps_graph = functools.reduce(components_graph, services, {})
+    # for k in deps_graph:
+    #     deps_graph[k] = list(set(deps_graph[k]))
     if not is_acyclic(deps_graph):
         raise ServiceDependenciesError('There are some cyclic dependencies')
 
@@ -73,7 +75,7 @@ def components_graph(graph, component):
             key = next_module.COMPONENT_KEY
             if service:
                 # No dependencies for a remote service
-                graph[key] = []
+                graph[key] = {}
                 continue
             deps = next_module.COMPONENT_DEPENDENCIES.copy()
             if key not in graph.keys():

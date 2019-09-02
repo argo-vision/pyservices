@@ -13,6 +13,9 @@ class AccountManager(Service):
     service_base_path = 'account-manager'
     if_path = 'notes'  # NOTE: shared with RPC
 
+    def __init__(self, ctx):
+        super().__init__(ctx)
+
     class NotesOperations(RPCInterface):
         if_path = 'notes-op'  # NOTE: shared with REST
 
@@ -76,7 +79,7 @@ class AccountManager(Service):
 
 
 def register_component(ctx: Context):
-    service = AccountManager()
+    service = AccountManager(ctx)
     ctx.register(COMPONENT_KEY, service)
     app = ctx.get_app()
     app.register_route(service)

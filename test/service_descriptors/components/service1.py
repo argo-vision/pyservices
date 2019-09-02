@@ -18,6 +18,9 @@ my_notes = [note_mm.get_class()('My title', 'My content')]
 class Service1(Service):
     service_base_path = 'Service1'
 
+    def __init__(self, ctx):
+        super().__init__(ctx)
+
     class NoteRestResourceInterface(RestResourceInterface):
         meta_model = note_mm
 
@@ -35,7 +38,7 @@ class Service1(Service):
 
 
 def register_component(ctx: Context):
-    service = Service1()
+    service = Service1(ctx)
     ctx.register(COMPONENT_KEY, service)
     app = ctx.get_app()
     app.register_route(service)
