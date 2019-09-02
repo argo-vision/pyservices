@@ -302,12 +302,15 @@ class EventInterface(HTTPInterface):
     queue_type = None
     queue_configuration = None
     codec = JSON
-    queue = None
 
     def __init__(self, service):
-        from pyservices.utils.queues import get_queue
         super().__init__(service)
-        self.queue = get_queue(self.queue_type, self.queue_configuration)
+        self._queue = None 
+
+    @property
+    def queue(self):
+        from pyservices.utils.queues import get_queue
+        return self._queue if self._queue is not None else get_queue(self.queue_type, self.queue_configuration)
 
     def _get_instance_calls(self):
         """
@@ -328,8 +331,7 @@ class EventInterface(HTTPInterface):
 
         # TODO: exposition must be gcloud dependent
 
-        return [create_descriptor(m)
-                for m in self._get_instance_calls().values()]
+        return [create_descriptor(m) for m in self._get_instance_calls().values()]
 
 
 def event(path=None, method="GET"):
