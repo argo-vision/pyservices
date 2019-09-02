@@ -15,6 +15,14 @@ class Service:
         """
         self.interface_descriptors = self._initialize_descriptors()
 
+    def start(self):
+        for intf in self.interface_descriptors:
+            intf.start()
+
+    def stop(self):
+        for intf in self.interface_descriptors:
+            intf.stop()
+
     def _initialize_descriptors(self):
         """ Initialize the interface descriptors.
 

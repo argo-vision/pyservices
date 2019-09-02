@@ -65,6 +65,7 @@ class ServiceConnectorTest(unittest.TestCase):
 
         self.service = service
         self.connector = create_service_connector(Service4, service_base_path)
+        service.start()
 
 
     def tearDown(self):
