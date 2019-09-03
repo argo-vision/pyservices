@@ -7,6 +7,7 @@ from wsgiref import simple_server
 
 import requests
 
+from pyservices.context import Context
 from pyservices.context.dependencies import create_application
 from pyservices.service_descriptors.WSGIAppWrapper import FalconWrapper
 import pyservices.context.microservice_utils as config_utils
@@ -163,13 +164,14 @@ class TestRestServerExposition(unittest.TestCase):
         config_utils._config_dir = cls._old_config_dir
 
     def setUp(self):
+        ctx = Context()
         self.address = '0.0.0.0'
         self.port1 = 8080
         self.port3 = 8081
         self.base_path1 = f'http://{address}:{self.port1}/{ServiceEx1.service_base_path}'
         self.base_path3 = f'http://{address}:{self.port3}/{ServiceEx3.service_base_path}'
-        self.service1 = ServiceEx1()
-        self.service3 = ServiceEx3()
+        self.service1 = ServiceEx1(ctx)
+        self.service3 = ServiceEx3(ctx)
 
         self.app_wrapper1 = FalconWrapper()  # TODO the only WSGI framework implemented
         self.app_wrapper3 = FalconWrapper()  # TODO the only WSGI framework implemented

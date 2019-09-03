@@ -9,11 +9,48 @@ class Service:
     service_base_path = None
     _module_prefix = 'services'
 
-    def __init__(self):
+    def __init__(self, ctx):
         """ Initialize the service instance.
 
         """
+        if hasattr(self, '__annotations__'):
+            for k, v in self.__annotations__.items():
+                if Service._skip_loading(v):
+                    continue
+                name = Service._create_name(v)
+                component = ctx.get_component(name)
+                setattr(self, k, component)
+
         self.interface_descriptors = self._initialize_descriptors()
+
+    def start(self):
+        for intf in self.interface_descriptors:
+            intf.start()
+
+    def stop(self):
+        for intf in self.interface_descriptors:
+            intf.stop()
+
+    @classmethod
+    def dependencies(cls):
+        name = ["pyservices.service_descriptors.WSGIAppWrapper"]
+        if hasattr(cls, '__annotations__'):
+            for k, v in cls.__annotations__.items():
+                if Service._skip_loading(v):
+                    continue
+                name.append(Service._create_name(v))
+        return name
+
+    @staticmethod
+    def _skip_loading(v):
+        return False
+
+    @staticmethod
+    def _create_name(v):
+        if issubclass(v,Service):
+            return '.'.join(v.__module__.split('.')[:-1])
+        else:
+            return v.__module__
 
     def _initialize_descriptors(self):
         """ Initialize the interface descriptors.
@@ -33,10 +70,6 @@ class Service:
         return [cls_attribute for cls_attribute in cls.__dict__.values()
                 if inspect.isclass(cls_attribute)
                 and issubclass(cls_attribute, HTTPInterface)]
-
-    @staticmethod
-    def get_method_reference(service_name, interface_name, method_name):
-        return ServiceOperationReference(service_name, interface_name, method_name)
 
 
 class ServiceOperationReference:

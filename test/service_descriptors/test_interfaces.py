@@ -43,12 +43,14 @@ class ServiceConnectorTest(unittest.TestCase):
 
     def testEventInterfaceHttpOperations(self):
 
-        queues.get_queue = Mock()
-        queues.get_queue.return_value = Queue()
+        gq = Mock()
+        queues.get_queue = gq
 
         service = Mock()
         service.service_base_path = 'service_base_path'
         iface = TestEventInterface(service)
+
+        gq.assert_not_called()
         ops = iface._get_http_operations()
         for op in ops:
             self.assertIsInstance(op, InterfaceOperationDescriptor)

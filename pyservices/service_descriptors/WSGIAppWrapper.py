@@ -98,8 +98,6 @@ class FalconWrapper(WSGIAppWrapper):
         children = itertools.chain.from_iterable(
             (x.children for x in self.app._router._roots))
         registered_uris += [x.uri_template for x in children]
-        for uri in registered_uris:
-            ps.log.info("Registered: {}".format(uri))  # FIXME some none rotes
 
     def _update_falcon_resource(self, service):
         # Update resources for every interface of the service

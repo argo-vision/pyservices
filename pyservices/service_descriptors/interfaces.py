@@ -29,12 +29,18 @@ class InterfaceBase(abc.ABC):
     def __init__(self, service):
         self.service = service
 
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
     @staticmethod
     def _get_calls(it, typecheck):
         return {method[0]:
-                    HTTP_op()(method[1]) for method in inspect.getmembers(
-            it, lambda m: typecheck(m))
-                if not method[0].startswith('_')}
+                    HTTP_op()(method[1]) for method
+                in inspect.getmembers(it, lambda m: typecheck(m))
+                if not (method[0].startswith('_') or method[0] == "start" or method[0] == "stop")}
 
     def _get_instance_calls(self):
         """Get name - function of an interface as dictionary
@@ -302,12 +308,15 @@ class EventInterface(HTTPInterface):
     queue_type = None
     queue_configuration = None
     codec = JSON
-    queue = None
 
     def __init__(self, service):
-        from pyservices.utils.queues import get_queue
         super().__init__(service)
-        self.queue = get_queue(self.queue_type, self.queue_configuration)
+        self.queue = None
+
+    def start(self):
+        from pyservices.utils.queues import get_queue
+        if self.queue is None:
+            self.queue = get_queue(self.queue_type, self.queue_configuration)
 
     def _get_instance_calls(self):
         """
@@ -328,8 +337,7 @@ class EventInterface(HTTPInterface):
 
         # TODO: exposition must be gcloud dependent
 
-        return [create_descriptor(m)
-                for m in self._get_instance_calls().values()]
+        return [create_descriptor(m) for m in self._get_instance_calls().values()]
 
 
 def event(path=None, method="GET"):
