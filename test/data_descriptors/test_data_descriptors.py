@@ -98,6 +98,20 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertEqual(second_type_account.connector.access.service,
                          'my_service')
 
+    def testReprTest(self):
+        repr(AccountMM)
+        repr(UserMM)
+        repr(NoteMM)
+        repr(PersonMultipleAddressMM)
+        repr(PersonMM)
+        repr(accessCF)
+        repr(AccountConnectorsMM)
+        repr(FirstConnectorMM)
+        repr(SecondConnectorMM)
+        repr(PaletteMM)
+        repr(EmailMM)
+        repr(UserEmailsMM)
+
     def testDictField(self):
         p = Palette('my_palette', {
             'red': '#ff0000',
