@@ -215,6 +215,32 @@ class TestDataDescriptor(unittest.TestCase):
         self.assertRaises(ModelInitException, person_mm.validate_id,
                           **illegal_ids[1])
 
+    def testOnEmptyDict(self):
+        A = MetaModel('TestOnEmptyDictA', DictField('a'))
+        v = A.get_class()(a={})
+
+        self.assertIsNotNone(v.a)
+        self.assertDictEqual(v.a, {})
+
+        v = A.get_class()()
+        self.assertIsNone(v.a)
+
+        v = A.get_class()(a=None)
+        self.assertIsNone(v.a)
+
+    def testOnEmptyList(self):
+        A = MetaModel('TestOnEmptyListA', ListField('a',data_type=StringField))
+        v = A.get_class()(a=[])
+
+        self.assertIsNotNone(v.a)
+        self.assertListEqual(v.a, [])
+
+        v = A.get_class()()
+        self.assertIsNone(v.a)
+
+        v = A.get_class()(a=None)
+        self.assertIsNone(v.a)
+
 
 if __name__ == '__main__':
     unittest.main()

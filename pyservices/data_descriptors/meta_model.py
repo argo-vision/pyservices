@@ -137,8 +137,20 @@ class MetaModel:
                 self.fields,
                 key=lambda field: isinstance(field, ConditionalField))
             for field in ordered_fields:
-                value = field_values.get(field.name)
-                if not value:
+
+                if field.name in field_values:
+                    value = field_values.get(field.name)
+                    if isinstance(field, ConditionalField):
+                        value = (
+                            value,
+                            field_values.get(field.evaluation_field_name))
+
+
+                    if value is not None:
+                        field_values[field.name] = field.init_value(value)
+                    else:
+                        field_values[field.name] = None
+                else:
                     if field.default is not None:
                         if callable(field.default):
                             value = field.default()
@@ -153,13 +165,6 @@ class MetaModel:
                         field_values[field.name] = value
                     else:
                         field_values[field.name] = None
-                else:
-                    # In this case, the initialization depends on a condition
-                    if isinstance(field, ConditionalField):
-                        value = (
-                            value,
-                            field_values.get(field.evaluation_field_name))
-                    field_values[field.name] = field.init_value(value)
 
             instance = super(cls, cls).__new__(cls)  # TODO
 
