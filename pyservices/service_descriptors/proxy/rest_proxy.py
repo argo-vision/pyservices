@@ -141,7 +141,7 @@ class LocalRestRequestCall(RestEndPoint):
         return self._delete(res_id)
 
     def update(self, res_id, data):
-        return self._update(res_id)
+        return self._update(res_id,data)
 
     def collect(self, params):
         def get_callable_collect():
