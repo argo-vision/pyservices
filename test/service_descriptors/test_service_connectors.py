@@ -78,6 +78,10 @@ class ServiceConnectorTest(unittest.TestCase):
         content = connector.notes_op.read_note()
         self.assertEqual(note.content, content)
 
+        note = connector.mynotes.detail(123)
+        note.title = "Another title"
+        connector.mynotes.update(123, note)
+
     def testServiceConnectorRemote(self):
         service = Service1(self.ctx)
         app_wrapper = FalconWrapper()

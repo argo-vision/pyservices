@@ -287,6 +287,13 @@ class ConditionalField(Field):
         self.evaluation_field_name = evaluation_field_name
         super().__init__(name, None, None)
 
+    def __repr__(self) -> str:
+        return '<Field {}:{}[{};{}]>'.format(
+            self.name,
+            self.__class__.__name__,
+            self.meta_models,
+            self.default)
+
     def init_value(self, value, strict: bool = True):
         """I have to type check the value at when the new model is being
             created.

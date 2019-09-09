@@ -362,7 +362,8 @@ def event(path=None, method="GET"):
                     task = self.queue.build_task(self.service, self, func, params)
                     self.queue.add_task(task)
                     return "added task"
-                except:
+                except Exception as e:
+                    logger.error("Cannot enqueue message: {}".format(e))
                     return "nack"
 
             def process_message(params):
