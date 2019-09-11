@@ -6,8 +6,9 @@ COMPONENT_KEY = __name__
 
 
 class BrokenService(Service):
-    pass
+    def __init__(self, ctx):
+        super().__init__(ctx)
 
 
 def register_component(ctx: Context):
-    ctx.register(COMPONENT_KEY, BrokenService())
+    ctx.register(COMPONENT_KEY, BrokenService(ctx))

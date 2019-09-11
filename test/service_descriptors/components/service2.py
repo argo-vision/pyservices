@@ -10,6 +10,9 @@ COMPONENT_KEY = __name__
 class Service2(Service):
     service_base_path = 'Service2'
 
+    def __init__(self, ctx):
+        super().__init__(ctx)
+
     class Service1Connection(RPCInterface):
         if_path = 'external'
 
@@ -19,7 +22,7 @@ class Service2(Service):
 
 
 def register_component(ctx: Context):
-    service = Service2()
+    service = Service2(ctx)
     ctx.register(COMPONENT_KEY, service)
     app = ctx.get_app()
     app.register_route(service)

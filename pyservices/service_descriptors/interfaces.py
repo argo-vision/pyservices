@@ -9,6 +9,7 @@ from pyservices import JSON
 from pyservices.data_descriptors.entity_codecs import Codec
 from pyservices.data_descriptors.fields import ComposedField
 from pyservices.utils.exceptions import InterfaceDefinitionException
+from pyservices.utils.gcloud import check_if_gcloud
 
 logger = logging.getLogger(__package__)
 
@@ -28,12 +29,18 @@ class InterfaceBase(abc.ABC):
     def __init__(self, service):
         self.service = service
 
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
     @staticmethod
     def _get_calls(it, typecheck):
         return {method[0]:
-                    HTTP_op()(method[1]) for method in inspect.getmembers(
-            it, lambda m: typecheck(m))
-                if not method[0].startswith('_')}
+                    HTTP_op()(method[1]) for method
+                in inspect.getmembers(it, lambda m: typecheck(m))
+                if not (method[0].startswith('_') or method[0] == "start" or method[0] == "stop")}
 
     def _get_instance_calls(self):
         """Get name - function of an interface as dictionary
@@ -301,12 +308,15 @@ class EventInterface(HTTPInterface):
     queue_type = None
     queue_configuration = None
     codec = JSON
-    queue = None
 
     def __init__(self, service):
-        from pyservices.utils.queues import get_queue
         super().__init__(service)
-        self.queue = get_queue(self.queue_type, self.queue_configuration)
+        self.queue = None
+
+    def start(self):
+        from pyservices.utils.queues import get_queue
+        if self.queue is None:
+            self.queue = get_queue(self.queue_type, self.queue_configuration)
 
     def _get_instance_calls(self):
         """
@@ -322,12 +332,12 @@ class EventInterface(HTTPInterface):
                 interface=self,
                 method=method,
                 http_method=method.http_method,
-                path=f'{self._get_endpoint()}/{method.path}')
+                path=f'{self._get_endpoint()}/{method.path}',
+                exposition=method.exposition)
 
         # TODO: exposition must be gcloud dependent
 
-        return [create_descriptor(m)
-                for m in self._get_instance_calls().values()]
+        return [create_descriptor(m) for m in self._get_instance_calls().values()]
 
 
 def event(path=None, method="GET"):
@@ -351,13 +361,14 @@ def event(path=None, method="GET"):
                 try:
                     task = self.queue.build_task(self.service, self, func, params)
                     return self.queue.add_task(task)
-                except:
+                except Exception as e:
+                    logger.error("Cannot enqueue message: {}".format(e))
                     return "nack"
 
             def process_message(params):
                 # TODO: Manage security and other "container" stuff (log, audit, ...).
 
-                func(self, *params['args'], **params['kwargs'])
+                func(self, **params)
 
             def dispatch_message(params):
                 op = process_message if self.queue.is_processing() else enqueue_message
@@ -367,6 +378,13 @@ def event(path=None, method="GET"):
             return dispatch_message(params)
 
         # Some data to add to the operation-descriptor:
+        if check_if_gcloud():
+            dispatcher.exposition = HTTPExposition.MANDATORY
+        elif hasattr(func, 'exposition'):
+            dispatcher.exposition = func.exposition
+        else:
+            dispatcher.exposition = HTTPExposition.ON_DEPENDENCY
+
         dispatcher.http_method = http_method
         dispatcher.path = relative_path
 

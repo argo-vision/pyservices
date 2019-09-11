@@ -53,6 +53,7 @@ class Context:
             return
 
         if isinstance(component, Service):
+            self.register_startup(lambda _: component.start())
             self._state[key] = create_service_connector(component.__class__, component)
         else:
             self._state[key] = component
@@ -78,9 +79,6 @@ class Context:
             return self._state[key]
         except KeyError:
             raise ComponentNotFound('Cannot find {}'.format(key))
-
-    def get_services(self):
-        return {k: v for k, v in self._state.items() if isinstance(v, Service)}
 
     def startup(self):
         for function in self._startup_functions:

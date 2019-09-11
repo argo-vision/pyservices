@@ -7,8 +7,9 @@ COMPONENT_KEY = __name__
 
 
 class ServiceCircular1(Service):
-    pass
+    def __init__(self, ctx):
+        super().__init__(ctx)
 
 
 def register_component(ctx: Context):
-    ctx.register(COMPONENT_KEY, ServiceCircular1())
+    ctx.register(COMPONENT_KEY, ServiceCircular1(ctx))

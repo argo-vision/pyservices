@@ -9,9 +9,11 @@ COMPONENT_KEY = __name__
 
 class Service2(Service):
     service_base_path = 'Service2'
-    pass
+
+    def __init__(self, ctx):
+        super().__init__(ctx)
 
 
 def register_component(ctx: Context):
-    ctx.register(COMPONENT_KEY, Service2())
+    ctx.register(COMPONENT_KEY, Service2(ctx))
 
